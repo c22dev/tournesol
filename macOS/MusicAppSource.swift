@@ -307,6 +307,7 @@ final class MusicAppSource: LocalPlayer {
                 script.send("set player position to \(target())")
                 await confirmStart(title: title, seeked: true, volume: volume, target: target)
             case .catalog(let id):
+                guard !id.isEmpty, id.allSatisfy(\.isNumber) else { return }
                 let storefront = Locale.current.region?.identifier.lowercased() ?? "us"
                 script.send("open location \"music://music.apple.com/\(storefront)/song/\(id)\"")
                 await confirmStart(title: title, seeked: false, volume: volume, target: target)
