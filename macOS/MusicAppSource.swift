@@ -304,12 +304,12 @@ final class MusicAppSource: LocalPlayer {
             switch located {
             case .library(let id):
                 script.send("play (track id \(id) of library playlist 1)")
-                script.send("set player position to \(target())")
-                await confirmStart(title: title, seeked: true, volume: volume, target: target)
+                await confirmStart(title: title, seeked: false, volume: volume, target: target)
             case .catalog(let id):
                 guard !id.isEmpty, id.allSatisfy(\.isNumber) else { return }
                 let storefront = Locale.current.region?.identifier.lowercased() ?? "us"
                 script.send("open location \"music://music.apple.com/\(storefront)/song/\(id)\"")
+                script.send("stop")
                 await confirmStart(title: title, seeked: false, volume: volume, target: target)
             }
         }
@@ -326,16 +326,21 @@ final class MusicAppSource: LocalPlayer {
             try? await Task.sleep(for: .milliseconds(150))
             publish()
             guard TrackMatcher.sameSong(state.title, title) else { continue }
-            guard state.isPlaying else {
+            if !seeked {
+                guard !state.isPlaying else {
+                    script.send("stop")
+                    continue
+                }
+                script.send("set player position to \(target())")
+                seeked = true
+                script.send("play")
+                continue
+            }
+            if !state.isPlaying {
                 if !pressedPlay {
                     script.send("play")
                     pressedPlay = true
                 }
-                continue
-            }
-            if !seeked {
-                script.send("set player position to \(target())")
-                seeked = true
                 continue
             }
             if !faded {

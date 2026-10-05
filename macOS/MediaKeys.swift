@@ -124,9 +124,16 @@ final class MediaKeyController {
     private func handle(_ key: MediaKey, isDown: Bool) -> Bool {
         let defaults = UserDefaults.standard
         guard defaults.bool(forKey: Self.enabledKey),
-              !key.isVolume || defaults.bool(forKey: Self.volumeKey),
-              let device = store.selected, !device.isLocal, device.isConnected
+              !key.isVolume || defaults.bool(forKey: Self.volumeKey)
         else { return false }
+
+        let device: RemoteDevice?
+        if key.isVolume && !store.devices.contains(where: { $0.state.isPlaying }) {
+            device = store.devices.first(where: \.isLocal)
+        } else {
+            device = store.selected.flatMap { $0.isLocal || !$0.isConnected ? nil : $0 }
+        }
+        guard let device else { return false }
         guard isDown else { return true }
 
         let symbol: String
