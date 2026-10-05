@@ -1,0 +1,794 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		014B2A06C26D9E04223BE072 /* DeviceViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5816F47D10D42C6C7229C9C /* DeviceViews.swift */; };
+		0AAC5F1A0B4D5568FC212CA5 /* BLEPeripheral.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D411DF55E3C80556EE98966 /* BLEPeripheral.swift */; };
+		0CBFB11CADF57397E228D401 /* RGB.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E8E9A2454111B642E1A5DB6 /* RGB.swift */; };
+		0D46705E228B8D6565B719D1 /* RemoteActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F8AC8E51C33745DF3B72BC6 /* RemoteActivityAttributes.swift */; };
+		177FFB9B7A7C9D7EFA0CB763 /* VolumeButtonForwarder.swift in Sources */ = {isa = PBXBuildFile; fileRef = D648C5193E6FA688120F819A /* VolumeButtonForwarder.swift */; };
+		197D681773B333CE9ED713B5 /* CatalogLookup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63707EC349C4A069A0796ACD /* CatalogLookup.swift */; };
+		1DA00A494508DCA0EEB79142 /* BLECentral.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F9D223AA5353292773B1A00 /* BLECentral.swift */; };
+		242A04C7D585C88BC4F78868 /* CatalogLookup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63707EC349C4A069A0796ACD /* CatalogLookup.swift */; };
+		25DB43AE144D28BD44F3AD73 /* BLEPeripheral.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D411DF55E3C80556EE98966 /* BLEPeripheral.swift */; };
+		282D86D95F1AF615B95C7962 /* PlayerComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E5BD5191E622B5BB09DB126 /* PlayerComponents.swift */; };
+		2DDC8F64F893B71C5A77D0D0 /* CompositeTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = E28EA3C157DC32B9E595AEA9 /* CompositeTransport.swift */; };
+		2F1A4A5E897CA574C61D365D /* TournesolMacApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7480B0B7E72ADA07961383E /* TournesolMacApp.swift */; };
+		2F7C74B4CB2A6E0FD3B10495 /* RemoteActionIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0E0A458324BE6DE6D9CDEC4 /* RemoteActionIntent.swift */; };
+		2FE06ACB6A91AFFD91636D4B /* ArtworkStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B9FCB47331B2149F0ECABD9 /* ArtworkStore.swift */; };
+		333BDAD11940679473320E2B /* PlayerComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E5BD5191E622B5BB09DB126 /* PlayerComponents.swift */; };
+		3E0916C813EE0770FFF4F0BA /* RGB.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E8E9A2454111B642E1A5DB6 /* RGB.swift */; };
+		3F7F043F54EDEF274E818E64 /* MusicPlayerSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7A929D2BDB410CD8ACA1006 /* MusicPlayerSource.swift */; };
+		447319F77E600EF948D1158D /* Playback.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32A0A19E44B408D516BF8692 /* Playback.swift */; };
+		4C0F29C2B13977FE5EDC0EB3 /* MediaKeys.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A144ED770A7FEA037D57C5F /* MediaKeys.swift */; };
+		4C427625BD2D50F12A27EC53 /* Previews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 196A1553EDDA8EA3278A63FD /* Previews.swift */; };
+		4E0BF8E650CBE035D405E4F1 /* PlatformImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEAD02C390052A15159B8C73 /* PlatformImage.swift */; };
+		4E417AE9242C222D022687BC /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = FCC5806CE75645544078BF09 /* Assets.xcassets */; };
+		4F94626E1D703B69DB86C9D8 /* Previews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 196A1553EDDA8EA3278A63FD /* Previews.swift */; };
+		619A3B3E7E80A6C260DE7212 /* ArtworkStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B9FCB47331B2149F0ECABD9 /* ArtworkStore.swift */; };
+		65C965EE653BEBD880D5F404 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EA98B38D749F4BB330E7D9F /* RootView.swift */; };
+		6860D7B9A694EAD485EF6A91 /* MacSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 901BC1DD296321585C0926E2 /* MacSettingsView.swift */; };
+		6C9EFD8E58F8982301BBC7D0 /* PlatformImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEAD02C390052A15159B8C73 /* PlatformImage.swift */; };
+		702DEDAFC11238E28A62E610 /* AppIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = C3A941F856C7CE399CDE0920 /* AppIcon.icon */; };
+		751A8AC10DAAF69F842F2D9B /* TournesolWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6023525E9545B35DBE90590 /* TournesolWidgets.swift */; };
+		779558B96AEB0882CD3989C7 /* RemoteDevice.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6988A4C1CE3B07B8F9C2F3C /* RemoteDevice.swift */; };
+		7895AD60FF65856604C615B1 /* Trust.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CE58B57200C961C8E17606B /* Trust.swift */; };
+		7A7660ED520F75E00C60DE0C /* Hub.swift in Sources */ = {isa = PBXBuildFile; fileRef = E82E7143C5E165F81FB99164 /* Hub.swift */; };
+		84A76CEE319B85A56C60CBE2 /* RemoteDevice.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6988A4C1CE3B07B8F9C2F3C /* RemoteDevice.swift */; };
+		84EE3404A74A84A6FE65C3BE /* MacRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 151095F9E9C2BD26F59EABCC /* MacRootView.swift */; };
+		867F5A5625EFFBA96441A5E0 /* CompositeTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = E28EA3C157DC32B9E595AEA9 /* CompositeTransport.swift */; };
+		8AC792A93DF95CE942CE0305 /* Bluetooth.swift in Sources */ = {isa = PBXBuildFile; fileRef = E06F8FFE8E06055041BC689F /* Bluetooth.swift */; };
+		8AE4A2F68DCEB38D0455E096 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = FCC5806CE75645544078BF09 /* Assets.xcassets */; };
+		9234ABF98206C0E50C408A80 /* SystemAudio.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39800096564D9D1BC9911B30 /* SystemAudio.swift */; };
+		9B2B734FBE12A99991DECA08 /* Trust.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CE58B57200C961C8E17606B /* Trust.swift */; };
+		9E8FA4FCE6C01E8BE97D2260 /* TournesolWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 6969AC7744E8E78D111EAE70 /* TournesolWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		A016EE1DEB1EC453627DACCA /* TournesolApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 858BA17B9AE382D2E168127E /* TournesolApp.swift */; };
+		A1C0A9B7AF86CD5DB6430763 /* DeviceViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5816F47D10D42C6C7229C9C /* DeviceViews.swift */; };
+		A5C012F4EF5B3D14DAEC33D5 /* RemoteLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16BE2E78B20D3AF48A8F0405 /* RemoteLiveActivity.swift */; };
+		ADC8EEEE7A30EE58677D70C2 /* RGB.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E8E9A2454111B642E1A5DB6 /* RGB.swift */; };
+		AE86DF97E35441339F95B6FF /* RemoteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59BE048F58405520F3432C10 /* RemoteView.swift */; };
+		B4195D6B90BBBA318609494B /* RemoteActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F8AC8E51C33745DF3B72BC6 /* RemoteActivityAttributes.swift */; };
+		B94DD6AFA89AB4F6FE0048C6 /* LiveActivityController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22E59B282EA7B3A60871CAF2 /* LiveActivityController.swift */; };
+		BD1427699C1DF7877BF65A5E /* PairingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E18C49A52E7FB08B4FF8361 /* PairingView.swift */; };
+		C02C4554643632746E622B70 /* Bluetooth.swift in Sources */ = {isa = PBXBuildFile; fileRef = E06F8FFE8E06055041BC689F /* Bluetooth.swift */; };
+		C87D298C57B239A70422FB5F /* Hub.swift in Sources */ = {isa = PBXBuildFile; fileRef = E82E7143C5E165F81FB99164 /* Hub.swift */; };
+		D52F294BE69BD890E8195062 /* AppIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = C3A941F856C7CE399CDE0920 /* AppIcon.icon */; };
+		D87B60DB4459ECC7AE399613 /* MusicAppSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B3AF3C3467B7B898AC74DE5 /* MusicAppSource.swift */; };
+		DDA579C82FB4D2006F0DAF55 /* PairingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E18C49A52E7FB08B4FF8361 /* PairingView.swift */; };
+		DFE60894D13A35986CCB14D9 /* VolumeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1A1E0BC11788FDD58FDE8B4 /* VolumeService.swift */; };
+		E3C0603E07161E9D739414D5 /* RemoteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59BE048F58405520F3432C10 /* RemoteView.swift */; };
+		E5076A7D1061911B42BAB493 /* NowPlayingStream.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95F59A4324B5677902F997A6 /* NowPlayingStream.swift */; };
+		F030AC9BDEC7C8CA4F787694 /* Playback.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32A0A19E44B408D516BF8692 /* Playback.swift */; };
+		F787FA6322EC60B6EA8D92F8 /* BLECentral.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F9D223AA5353292773B1A00 /* BLECentral.swift */; };
+		F8BB101A9B03C7C502D0AAD3 /* RemoteActionIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0E0A458324BE6DE6D9CDEC4 /* RemoteActionIntent.swift */; };
+		F9DCCC53C0F309BEEA0B5458 /* ShareNowPlayingIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB6110B62D5E82BCB9D5F63A /* ShareNowPlayingIntent.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		54D5B3942CD2BDB32E10B4C8 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 61FA82AEAB33F4920F8F4E12 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 8A01108D8C1D1754950CEEC9;
+			remoteInfo = TournesolWidgets;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		BB387B740F27ADB50ABC16F7 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				9E8FA4FCE6C01E8BE97D2260 /* TournesolWidgets.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		151095F9E9C2BD26F59EABCC /* MacRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacRootView.swift; sourceTree = "<group>"; };
+		16BE2E78B20D3AF48A8F0405 /* RemoteLiveActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteLiveActivity.swift; sourceTree = "<group>"; };
+		193C28815392AAB3D5FDA2CD /* TournesolMac.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = TournesolMac.entitlements; sourceTree = "<group>"; };
+		196A1553EDDA8EA3278A63FD /* Previews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Previews.swift; sourceTree = "<group>"; };
+		1E5BD5191E622B5BB09DB126 /* PlayerComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerComponents.swift; sourceTree = "<group>"; };
+		22E59B282EA7B3A60871CAF2 /* LiveActivityController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivityController.swift; sourceTree = "<group>"; };
+		32A0A19E44B408D516BF8692 /* Playback.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Playback.swift; sourceTree = "<group>"; };
+		39800096564D9D1BC9911B30 /* SystemAudio.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemAudio.swift; sourceTree = "<group>"; };
+		3A144ED770A7FEA037D57C5F /* MediaKeys.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaKeys.swift; sourceTree = "<group>"; };
+		59BE048F58405520F3432C10 /* RemoteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteView.swift; sourceTree = "<group>"; };
+		63707EC349C4A069A0796ACD /* CatalogLookup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatalogLookup.swift; sourceTree = "<group>"; };
+		6969AC7744E8E78D111EAE70 /* TournesolWidgets.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = TournesolWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		6B9FCB47331B2149F0ECABD9 /* ArtworkStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArtworkStore.swift; sourceTree = "<group>"; };
+		6D3ABDA3205A7451D68FA585 /* TournesolMac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; name = TournesolMac.app; path = Tournesol.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		7D411DF55E3C80556EE98966 /* BLEPeripheral.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLEPeripheral.swift; sourceTree = "<group>"; };
+		7E18C49A52E7FB08B4FF8361 /* PairingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairingView.swift; sourceTree = "<group>"; };
+		7E8E9A2454111B642E1A5DB6 /* RGB.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RGB.swift; sourceTree = "<group>"; };
+		858BA17B9AE382D2E168127E /* TournesolApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TournesolApp.swift; sourceTree = "<group>"; };
+		8B3AF3C3467B7B898AC74DE5 /* MusicAppSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusicAppSource.swift; sourceTree = "<group>"; };
+		8CE58B57200C961C8E17606B /* Trust.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Trust.swift; sourceTree = "<group>"; };
+		8EA98B38D749F4BB330E7D9F /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		901BC1DD296321585C0926E2 /* MacSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacSettingsView.swift; sourceTree = "<group>"; };
+		95F59A4324B5677902F997A6 /* NowPlayingStream.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NowPlayingStream.swift; sourceTree = "<group>"; };
+		9A928E73B7EE56BD8EEB771D /* TournesolWidgets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = TournesolWidgets.entitlements; sourceTree = "<group>"; };
+		9F8AC8E51C33745DF3B72BC6 /* RemoteActivityAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteActivityAttributes.swift; sourceTree = "<group>"; };
+		9F9D223AA5353292773B1A00 /* BLECentral.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLECentral.swift; sourceTree = "<group>"; };
+		A0E0A458324BE6DE6D9CDEC4 /* RemoteActionIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteActionIntent.swift; sourceTree = "<group>"; };
+		A5816F47D10D42C6C7229C9C /* DeviceViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceViews.swift; sourceTree = "<group>"; };
+		B1A1E0BC11788FDD58FDE8B4 /* VolumeService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VolumeService.swift; sourceTree = "<group>"; };
+		B6988A4C1CE3B07B8F9C2F3C /* RemoteDevice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteDevice.swift; sourceTree = "<group>"; };
+		C3A941F856C7CE399CDE0920 /* AppIcon.icon */ = {isa = PBXFileReference; lastKnownFileType = wrapper.icon; path = AppIcon.icon; sourceTree = "<group>"; };
+		CB4A902DABC731C20F04D84C /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		CB6110B62D5E82BCB9D5F63A /* ShareNowPlayingIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareNowPlayingIntent.swift; sourceTree = "<group>"; };
+		D648C5193E6FA688120F819A /* VolumeButtonForwarder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VolumeButtonForwarder.swift; sourceTree = "<group>"; };
+		DDB4C576954BB06509CDC07E /* Tournesol.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Tournesol.entitlements; sourceTree = "<group>"; };
+		E06F8FFE8E06055041BC689F /* Bluetooth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Bluetooth.swift; sourceTree = "<group>"; };
+		E28EA3C157DC32B9E595AEA9 /* CompositeTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompositeTransport.swift; sourceTree = "<group>"; };
+		E6023525E9545B35DBE90590 /* TournesolWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TournesolWidgets.swift; sourceTree = "<group>"; };
+		E7480B0B7E72ADA07961383E /* TournesolMacApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TournesolMacApp.swift; sourceTree = "<group>"; };
+		E7A929D2BDB410CD8ACA1006 /* MusicPlayerSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusicPlayerSource.swift; sourceTree = "<group>"; };
+		E82E7143C5E165F81FB99164 /* Hub.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Hub.swift; sourceTree = "<group>"; };
+		F4BBBAC155C44C8FFBF04260 /* Tournesol.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Tournesol.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		FADD35AE6603A0A5E8F1D0D7 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		FCC5806CE75645544078BF09 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		FE0EE37001A3B7A0293A2698 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		FEAD02C390052A15159B8C73 /* PlatformImage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlatformImage.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		02E8C6A3234EA97D0B102D9F /* Pairing */ = {
+			isa = PBXGroup;
+			children = (
+				8CE58B57200C961C8E17606B /* Trust.swift */,
+			);
+			path = Pairing;
+			sourceTree = "<group>";
+		};
+		1C578FE8ECBC9E709A9AE5D1 /* Util */ = {
+			isa = PBXGroup;
+			children = (
+				63707EC349C4A069A0796ACD /* CatalogLookup.swift */,
+				FEAD02C390052A15159B8C73 /* PlatformImage.swift */,
+			);
+			path = Util;
+			sourceTree = "<group>";
+		};
+		32D4C65B1EEC26709EA884A7 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				F4BBBAC155C44C8FFBF04260 /* Tournesol.app */,
+				6D3ABDA3205A7451D68FA585 /* TournesolMac.app */,
+				6969AC7744E8E78D111EAE70 /* TournesolWidgets.appex */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		330F635705D47AB6888DF96A /* LiveActivity */ = {
+			isa = PBXGroup;
+			children = (
+				6B9FCB47331B2149F0ECABD9 /* ArtworkStore.swift */,
+				A0E0A458324BE6DE6D9CDEC4 /* RemoteActionIntent.swift */,
+				9F8AC8E51C33745DF3B72BC6 /* RemoteActivityAttributes.swift */,
+			);
+			path = LiveActivity;
+			sourceTree = "<group>";
+		};
+		3E3E91172B852E0E360ABC1C /* Widgets */ = {
+			isa = PBXGroup;
+			children = (
+				FADD35AE6603A0A5E8F1D0D7 /* Info.plist */,
+				16BE2E78B20D3AF48A8F0405 /* RemoteLiveActivity.swift */,
+				9A928E73B7EE56BD8EEB771D /* TournesolWidgets.entitlements */,
+				E6023525E9545B35DBE90590 /* TournesolWidgets.swift */,
+			);
+			path = Widgets;
+			sourceTree = "<group>";
+		};
+		5B60EADF356F6DBFE44CBCED /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				DEF2DDAEDDD0B4754B84837A /* Model */,
+				02E8C6A3234EA97D0B102D9F /* Pairing */,
+				88D55833240965FA1793E051 /* Transport */,
+				F4C829A9C65AA53BDED0095C /* UI */,
+				1C578FE8ECBC9E709A9AE5D1 /* Util */,
+				C3A941F856C7CE399CDE0920 /* AppIcon.icon */,
+				FCC5806CE75645544078BF09 /* Assets.xcassets */,
+			);
+			path = Shared;
+			sourceTree = "<group>";
+		};
+		88D55833240965FA1793E051 /* Transport */ = {
+			isa = PBXGroup;
+			children = (
+				9F9D223AA5353292773B1A00 /* BLECentral.swift */,
+				7D411DF55E3C80556EE98966 /* BLEPeripheral.swift */,
+				E06F8FFE8E06055041BC689F /* Bluetooth.swift */,
+				E28EA3C157DC32B9E595AEA9 /* CompositeTransport.swift */,
+			);
+			path = Transport;
+			sourceTree = "<group>";
+		};
+		93BDCFD008D2DB2E449669D1 /* macOS */ = {
+			isa = PBXGroup;
+			children = (
+				CB4A902DABC731C20F04D84C /* Info.plist */,
+				151095F9E9C2BD26F59EABCC /* MacRootView.swift */,
+				901BC1DD296321585C0926E2 /* MacSettingsView.swift */,
+				3A144ED770A7FEA037D57C5F /* MediaKeys.swift */,
+				8B3AF3C3467B7B898AC74DE5 /* MusicAppSource.swift */,
+				95F59A4324B5677902F997A6 /* NowPlayingStream.swift */,
+				39800096564D9D1BC9911B30 /* SystemAudio.swift */,
+				193C28815392AAB3D5FDA2CD /* TournesolMac.entitlements */,
+				E7480B0B7E72ADA07961383E /* TournesolMacApp.swift */,
+			);
+			path = macOS;
+			sourceTree = "<group>";
+		};
+		93CCDD37A5371882A742E1BE = {
+			isa = PBXGroup;
+			children = (
+				BCC7ACAA78BF37481B6E9406 /* iOS */,
+				330F635705D47AB6888DF96A /* LiveActivity */,
+				93BDCFD008D2DB2E449669D1 /* macOS */,
+				5B60EADF356F6DBFE44CBCED /* Shared */,
+				3E3E91172B852E0E360ABC1C /* Widgets */,
+				32D4C65B1EEC26709EA884A7 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		BCC7ACAA78BF37481B6E9406 /* iOS */ = {
+			isa = PBXGroup;
+			children = (
+				FE0EE37001A3B7A0293A2698 /* Info.plist */,
+				22E59B282EA7B3A60871CAF2 /* LiveActivityController.swift */,
+				E7A929D2BDB410CD8ACA1006 /* MusicPlayerSource.swift */,
+				8EA98B38D749F4BB330E7D9F /* RootView.swift */,
+				CB6110B62D5E82BCB9D5F63A /* ShareNowPlayingIntent.swift */,
+				DDB4C576954BB06509CDC07E /* Tournesol.entitlements */,
+				858BA17B9AE382D2E168127E /* TournesolApp.swift */,
+				D648C5193E6FA688120F819A /* VolumeButtonForwarder.swift */,
+				B1A1E0BC11788FDD58FDE8B4 /* VolumeService.swift */,
+			);
+			path = iOS;
+			sourceTree = "<group>";
+		};
+		DEF2DDAEDDD0B4754B84837A /* Model */ = {
+			isa = PBXGroup;
+			children = (
+				E82E7143C5E165F81FB99164 /* Hub.swift */,
+				32A0A19E44B408D516BF8692 /* Playback.swift */,
+				B6988A4C1CE3B07B8F9C2F3C /* RemoteDevice.swift */,
+				7E8E9A2454111B642E1A5DB6 /* RGB.swift */,
+			);
+			path = Model;
+			sourceTree = "<group>";
+		};
+		F4C829A9C65AA53BDED0095C /* UI */ = {
+			isa = PBXGroup;
+			children = (
+				A5816F47D10D42C6C7229C9C /* DeviceViews.swift */,
+				7E18C49A52E7FB08B4FF8361 /* PairingView.swift */,
+				1E5BD5191E622B5BB09DB126 /* PlayerComponents.swift */,
+				196A1553EDDA8EA3278A63FD /* Previews.swift */,
+				59BE048F58405520F3432C10 /* RemoteView.swift */,
+			);
+			path = UI;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		8A01108D8C1D1754950CEEC9 /* TournesolWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C6F814B9EEF3070FEDE6D2B3 /* Build configuration list for PBXNativeTarget "TournesolWidgets" */;
+			buildPhases = (
+				071D2D44050D5556830B0523 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = TournesolWidgets;
+			packageProductDependencies = (
+			);
+			productName = TournesolWidgets;
+			productReference = 6969AC7744E8E78D111EAE70 /* TournesolWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		CAEF01AFE82365C540CA8540 /* TournesolMac */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B78FD415F25AE3CB6F537954 /* Build configuration list for PBXNativeTarget "TournesolMac" */;
+			buildPhases = (
+				02501FD3861816AB27E19A52 /* Sources */,
+				D0AD2BA0E151EBFB5D1319B5 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = TournesolMac;
+			packageProductDependencies = (
+			);
+			productName = TournesolMac;
+			productReference = 6D3ABDA3205A7451D68FA585 /* TournesolMac.app */;
+			productType = "com.apple.product-type.application";
+		};
+		D3E9F943169311E13FC27A1B /* Tournesol */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 98C4C8A79BE468CB13724D3A /* Build configuration list for PBXNativeTarget "Tournesol" */;
+			buildPhases = (
+				2D4972F67561AC683BE955F3 /* Sources */,
+				6C6E5BF4C533F7469FE65279 /* Resources */,
+				BB387B740F27ADB50ABC16F7 /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				A12A3D4A03F8C1286C1CE2D7 /* PBXTargetDependency */,
+			);
+			name = Tournesol;
+			packageProductDependencies = (
+			);
+			productName = Tournesol;
+			productReference = F4BBBAC155C44C8FFBF04260 /* Tournesol.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		61FA82AEAB33F4920F8F4E12 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					8A01108D8C1D1754950CEEC9 = {
+						DevelopmentTeam = P69N7G8867;
+						ProvisioningStyle = Automatic;
+					};
+					CAEF01AFE82365C540CA8540 = {
+						DevelopmentTeam = P69N7G8867;
+						ProvisioningStyle = Automatic;
+					};
+					D3E9F943169311E13FC27A1B = {
+						DevelopmentTeam = P69N7G8867;
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 278EBCC9DBA60C901F6D54ED /* Build configuration list for PBXProject "Tournesol" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 93CCDD37A5371882A742E1BE;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 32D4C65B1EEC26709EA884A7 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				D3E9F943169311E13FC27A1B /* Tournesol */,
+				8A01108D8C1D1754950CEEC9 /* TournesolWidgets */,
+				CAEF01AFE82365C540CA8540 /* TournesolMac */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		6C6E5BF4C533F7469FE65279 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D52F294BE69BD890E8195062 /* AppIcon.icon in Resources */,
+				4E417AE9242C222D022687BC /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D0AD2BA0E151EBFB5D1319B5 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				702DEDAFC11238E28A62E610 /* AppIcon.icon in Resources */,
+				8AE4A2F68DCEB38D0455E096 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		02501FD3861816AB27E19A52 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1DA00A494508DCA0EEB79142 /* BLECentral.swift in Sources */,
+				0AAC5F1A0B4D5568FC212CA5 /* BLEPeripheral.swift in Sources */,
+				C02C4554643632746E622B70 /* Bluetooth.swift in Sources */,
+				242A04C7D585C88BC4F78868 /* CatalogLookup.swift in Sources */,
+				2DDC8F64F893B71C5A77D0D0 /* CompositeTransport.swift in Sources */,
+				014B2A06C26D9E04223BE072 /* DeviceViews.swift in Sources */,
+				C87D298C57B239A70422FB5F /* Hub.swift in Sources */,
+				84EE3404A74A84A6FE65C3BE /* MacRootView.swift in Sources */,
+				6860D7B9A694EAD485EF6A91 /* MacSettingsView.swift in Sources */,
+				4C0F29C2B13977FE5EDC0EB3 /* MediaKeys.swift in Sources */,
+				D87B60DB4459ECC7AE399613 /* MusicAppSource.swift in Sources */,
+				E5076A7D1061911B42BAB493 /* NowPlayingStream.swift in Sources */,
+				BD1427699C1DF7877BF65A5E /* PairingView.swift in Sources */,
+				4E0BF8E650CBE035D405E4F1 /* PlatformImage.swift in Sources */,
+				F030AC9BDEC7C8CA4F787694 /* Playback.swift in Sources */,
+				282D86D95F1AF615B95C7962 /* PlayerComponents.swift in Sources */,
+				4C427625BD2D50F12A27EC53 /* Previews.swift in Sources */,
+				0CBFB11CADF57397E228D401 /* RGB.swift in Sources */,
+				84A76CEE319B85A56C60CBE2 /* RemoteDevice.swift in Sources */,
+				AE86DF97E35441339F95B6FF /* RemoteView.swift in Sources */,
+				9234ABF98206C0E50C408A80 /* SystemAudio.swift in Sources */,
+				2F1A4A5E897CA574C61D365D /* TournesolMacApp.swift in Sources */,
+				7895AD60FF65856604C615B1 /* Trust.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		071D2D44050D5556830B0523 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				619A3B3E7E80A6C260DE7212 /* ArtworkStore.swift in Sources */,
+				3E0916C813EE0770FFF4F0BA /* RGB.swift in Sources */,
+				F8BB101A9B03C7C502D0AAD3 /* RemoteActionIntent.swift in Sources */,
+				0D46705E228B8D6565B719D1 /* RemoteActivityAttributes.swift in Sources */,
+				A5C012F4EF5B3D14DAEC33D5 /* RemoteLiveActivity.swift in Sources */,
+				751A8AC10DAAF69F842F2D9B /* TournesolWidgets.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		2D4972F67561AC683BE955F3 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				2FE06ACB6A91AFFD91636D4B /* ArtworkStore.swift in Sources */,
+				F787FA6322EC60B6EA8D92F8 /* BLECentral.swift in Sources */,
+				25DB43AE144D28BD44F3AD73 /* BLEPeripheral.swift in Sources */,
+				8AC792A93DF95CE942CE0305 /* Bluetooth.swift in Sources */,
+				197D681773B333CE9ED713B5 /* CatalogLookup.swift in Sources */,
+				867F5A5625EFFBA96441A5E0 /* CompositeTransport.swift in Sources */,
+				A1C0A9B7AF86CD5DB6430763 /* DeviceViews.swift in Sources */,
+				7A7660ED520F75E00C60DE0C /* Hub.swift in Sources */,
+				B94DD6AFA89AB4F6FE0048C6 /* LiveActivityController.swift in Sources */,
+				3F7F043F54EDEF274E818E64 /* MusicPlayerSource.swift in Sources */,
+				DDA579C82FB4D2006F0DAF55 /* PairingView.swift in Sources */,
+				6C9EFD8E58F8982301BBC7D0 /* PlatformImage.swift in Sources */,
+				447319F77E600EF948D1158D /* Playback.swift in Sources */,
+				333BDAD11940679473320E2B /* PlayerComponents.swift in Sources */,
+				4F94626E1D703B69DB86C9D8 /* Previews.swift in Sources */,
+				ADC8EEEE7A30EE58677D70C2 /* RGB.swift in Sources */,
+				2F7C74B4CB2A6E0FD3B10495 /* RemoteActionIntent.swift in Sources */,
+				B4195D6B90BBBA318609494B /* RemoteActivityAttributes.swift in Sources */,
+				779558B96AEB0882CD3989C7 /* RemoteDevice.swift in Sources */,
+				E3C0603E07161E9D739414D5 /* RemoteView.swift in Sources */,
+				65C965EE653BEBD880D5F404 /* RootView.swift in Sources */,
+				F9DCCC53C0F309BEEA0B5458 /* ShareNowPlayingIntent.swift in Sources */,
+				A016EE1DEB1EC453627DACCA /* TournesolApp.swift in Sources */,
+				9B2B734FBE12A99991DECA08 /* Trust.swift in Sources */,
+				177FFB9B7A7C9D7EFA0CB763 /* VolumeButtonForwarder.swift in Sources */,
+				DFE60894D13A35986CCB14D9 /* VolumeService.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		A12A3D4A03F8C1286C1CE2D7 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 8A01108D8C1D1754950CEEC9 /* TournesolWidgets */;
+			targetProxy = 54D5B3942CD2BDB32E10B4C8 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		129304E84220AA29123E9435 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Widgets/TournesolWidgets.entitlements;
+				INFOPLIST_FILE = Widgets/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = ch.cclerc.Tournesol.Widgets;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) WIDGET_EXTENSION";
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		13561A7880C37405C1EA0BB0 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = iOS/Tournesol.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = iOS/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Tournesol;
+				INFOPLIST_KEY_NSAppleMusicUsageDescription = "Tournesol reads what's playing in Music so your other devices can control it.";
+				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Tournesol uses Bluetooth to control music on your nearby devices.";
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = ch.cclerc.Tournesol;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		21C179E76B78FB4252F8D4D9 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = P69N7G8867;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
+				MACOSX_DEPLOYMENT_TARGET = 27.0;
+				MARKETING_VERSION = 0.1;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+		31FCA839C55D4A36C53F4FC7 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = P69N7G8867;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
+				MACOSX_DEPLOYMENT_TARGET = 27.0;
+				MARKETING_VERSION = 0.1;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 6.0;
+			};
+			name = Release;
+		};
+		4741173E87EA35BE88E51751 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Widgets/TournesolWidgets.entitlements;
+				INFOPLIST_FILE = Widgets/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = ch.cclerc.Tournesol.Widgets;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) WIDGET_EXTENSION";
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		A4E7311BAB4D8DC6C99A26CA /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = macOS/TournesolMac.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_HARDENED_RUNTIME = YES;
+				INFOPLIST_FILE = macOS/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = ch.cclerc.Tournesol.mac;
+				PRODUCT_NAME = Tournesol;
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+		AF9EDB1E12D2FBAE98018B85 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = macOS/TournesolMac.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_HARDENED_RUNTIME = YES;
+				INFOPLIST_FILE = macOS/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = ch.cclerc.Tournesol.mac;
+				PRODUCT_NAME = Tournesol;
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		CE45FC359EE612D907719CE7 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = iOS/Tournesol.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = iOS/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Tournesol;
+				INFOPLIST_KEY_NSAppleMusicUsageDescription = "Tournesol reads what's playing in Music so your other devices can control it.";
+				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Tournesol uses Bluetooth to control music on your nearby devices.";
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = ch.cclerc.Tournesol;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		278EBCC9DBA60C901F6D54ED /* Build configuration list for PBXProject "Tournesol" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				21C179E76B78FB4252F8D4D9 /* Debug */,
+				31FCA839C55D4A36C53F4FC7 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		98C4C8A79BE468CB13724D3A /* Build configuration list for PBXNativeTarget "Tournesol" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				CE45FC359EE612D907719CE7 /* Debug */,
+				13561A7880C37405C1EA0BB0 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		B78FD415F25AE3CB6F537954 /* Build configuration list for PBXNativeTarget "TournesolMac" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AF9EDB1E12D2FBAE98018B85 /* Debug */,
+				A4E7311BAB4D8DC6C99A26CA /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		C6F814B9EEF3070FEDE6D2B3 /* Build configuration list for PBXNativeTarget "TournesolWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4741173E87EA35BE88E51751 /* Debug */,
+				129304E84220AA29123E9435 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 61FA82AEAB33F4920F8F4E12 /* Project object */;
+}
