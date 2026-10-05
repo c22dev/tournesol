@@ -1,0 +1,7 @@
+name = "tournesol-push"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+
+[vars]
+APNS_TEAM_ID = "P69N7G8867"
+APNS_TOPIC_PREFIX = "ch.cclerc.Tournesol"

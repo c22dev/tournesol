@@ -47,6 +47,24 @@ final class CompositeTransport: MessageTransport {
         }
     }
 
+    func isInitiator(_ link: UUID) -> Bool {
+        guard let key = keys[link] else { return false }
+        return transports[key.transport].isInitiator(key.peer)
+    }
+
+    func close(_ link: UUID) {
+        guard let key = keys[link] else { return }
+        transports[key.transport].close(key.peer)
+    }
+
+    func resumeAll() {
+        transports.forEach { $0.resumeAll() }
+    }
+
+    func setScanning(_ scanning: Bool) {
+        transports.forEach { $0.setScanning(scanning) }
+    }
+
     func send(_ message: Envelope, to link: UUID, lane: Lane) {
         guard let key = keys[link] else { return }
         transports[key.transport].send(message, to: key.peer, lane: lane)

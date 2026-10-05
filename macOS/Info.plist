@@ -28,5 +28,9 @@
 	<string>Tournesol looks up songs in Apple Music to show artwork and move playback between your devices.</string>
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>Tournesol uses Bluetooth to control music on your nearby devices.</string>
+	<key>TournesolPushSecret</key>
+	<string>$(PUSH_RELAY_SECRET)</string>
+	<key>TournesolPushURL</key>
+	<string>$(PUSH_RELAY_URL)</string>
 </dict>
 </plist>

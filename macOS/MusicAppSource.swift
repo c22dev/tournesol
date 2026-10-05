@@ -309,7 +309,7 @@ final class MusicAppSource: LocalPlayer {
                 guard !id.isEmpty, id.allSatisfy(\.isNumber) else { return }
                 let storefront = Locale.current.region?.identifier.lowercased() ?? "us"
                 script.send("open location \"music://music.apple.com/\(storefront)/song/\(id)\"")
-                script.send("stop")
+                script.send("pause")
                 await confirmStart(title: title, seeked: false, volume: volume, target: target)
             }
         }
@@ -328,7 +328,7 @@ final class MusicAppSource: LocalPlayer {
             guard TrackMatcher.sameSong(state.title, title) else { continue }
             if !seeked {
                 guard !state.isPlaying else {
-                    script.send("stop")
+                    script.send("pause")
                     continue
                 }
                 script.send("set player position to \(target())")

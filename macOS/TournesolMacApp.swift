@@ -39,14 +39,24 @@ final class AppModel {
     static let shared = AppModel()
     let hub: Hub
     let mediaKeys: MediaKeyController
+    let nowPlaying: NowPlayingBridge
     private var pairingPanel: NSPanel?
+    private var lifecycle: [NSObjectProtocol] = []
 
     private init() {
         let info = DeviceInfo.current
         let transport = CompositeTransport([BLEPeripheral(localName: info.name), BLECentral()])
         hub = Hub(info: info, player: MusicAppSource(), transport: transport, pollInterval: .seconds(15))
         mediaKeys = MediaKeyController(store: hub.store)
+        nowPlaying = NowPlayingBridge(store: hub.store)
         observePairing()
+        let hub = hub
+        hub.wantsDiscovery = NSApp?.isActive ?? true
+        lifecycle = [NSApplication.didBecomeActiveNotification, NSApplication.didResignActiveNotification].map { name in
+            NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { _ in
+                MainActor.assumeIsolated { hub.wantsDiscovery = name == NSApplication.didBecomeActiveNotification }
+            }
+        }
     }
 
     private func observePairing() {

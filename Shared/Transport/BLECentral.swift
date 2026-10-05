@@ -18,6 +18,8 @@ final class BLECentral: NSObject, MessageTransport {
     private var inboxes: [UUID: LaneAssembler] = [:]
     private var outboxes: [UUID: Outbox] = [:]
     private var ready: Set<UUID> = []
+    private var suppressed: Set<UUID> = []
+    private var wantsScanning = true
 
     override init() {
         super.init()
@@ -45,7 +47,37 @@ final class BLECentral: NSObject, MessageTransport {
         }
     }
 
+    func isInitiator(_ peer: UUID) -> Bool { true }
+
+    func close(_ peer: UUID) {
+        guard let peripheral = peripherals[peer] else { return }
+        suppressed.insert(peer)
+        manager.cancelPeripheralConnection(peripheral)
+    }
+
+    func resumeAll() {
+        guard !suppressed.isEmpty else { return }
+        suppressed.removeAll()
+        guard manager.state == .poweredOn else { return }
+        peripherals.values.filter { $0.state == .disconnected }.forEach(connect)
+    }
+
+    func setScanning(_ scanning: Bool) {
+        wantsScanning = scanning
+        updateScanning()
+    }
+
+    private func updateScanning() {
+        guard manager.state == .poweredOn else { return }
+        if wantsScanning, !manager.isScanning {
+            manager.scanForPeripherals(withServices: [BLE.service])
+        } else if !wantsScanning, manager.isScanning {
+            manager.stopScan()
+        }
+    }
+
     private func connect(_ peripheral: CBPeripheral) {
+        guard !suppressed.contains(peripheral.identifier) else { return }
         peripherals[peripheral.identifier] = peripheral
         peripheral.delegate = self
         if peripheral.state == .connected {
@@ -73,7 +105,7 @@ extension BLECentral: @preconcurrency CBCentralManagerDelegate {
         }
         central.retrieveConnectedPeripherals(withServices: [BLE.service]).forEach(connect)
         peripherals.values.forEach(connect)
-        central.scanForPeripherals(withServices: [BLE.service])
+        updateScanning()
     }
 
     #if os(iOS)
@@ -101,6 +133,7 @@ extension BLECentral: @preconcurrency CBCentralManagerDelegate {
 
     func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: Error?) {
         reset(peripheral.identifier)
+        guard !suppressed.contains(peripheral.identifier) else { return }
         central.connect(peripheral)
     }
 }

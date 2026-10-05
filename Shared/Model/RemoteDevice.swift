@@ -184,7 +184,20 @@ final class TransferStatus {
 @Observable
 final class DeviceStore {
     var devices: [RemoteDevice] = []
-    var selectedID: String?
+    var selectedID: String? {
+        didSet {
+            if !isAutoSelecting, selectedID != oldValue { lastManualSelection = .now }
+        }
+    }
+    @ObservationIgnored private var isAutoSelecting = false
+    @ObservationIgnored private(set) var lastManualSelection: ContinuousClock.Instant?
+
+    func autoSelect(_ id: String) {
+        guard selectedID != id else { return }
+        isAutoSelecting = true
+        selectedID = id
+        isAutoSelecting = false
+    }
     var pairingPrompt: PairingPrompt?
     var transfer: TransferStatus?
 

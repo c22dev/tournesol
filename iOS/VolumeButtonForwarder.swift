@@ -81,7 +81,7 @@ final class VolumeButtonForwarder {
             onFocusChange(nil)
         case .background:
             pin()
-            onFocusChange(target?.id)
+            onFocusChange(NowPlayingBridge.isMirroring ? nil : target?.id)
         }
     }
 

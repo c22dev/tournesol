@@ -31,7 +31,9 @@ final class VolumeService {
         view = MPVolumeView(frame: CGRect(x: -1000, y: -1000, width: 1, height: 1))
         view.alpha = 0.01
         try? session.setCategory(.ambient, options: .mixWithOthers)
-        try? session.setActive(true)
+        if UIApplication.shared.applicationState != .background {
+            try? session.setActive(true)
+        }
         lastReading = session.outputVolume
         current = Double(lastReading)
         observation = session.observe(\.outputVolume, options: [.new]) { [weak self] _, change in
@@ -40,7 +42,12 @@ final class VolumeService {
         }
         observers = [UIApplication.didEnterBackgroundNotification, UIApplication.didBecomeActiveNotification].map { name in
             NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
-                MainActor.assumeIsolated { self?.resync() }
+                MainActor.assumeIsolated {
+                    if !SilentAudio.isRunning {
+                        try? self?.session.setActive(name == UIApplication.didBecomeActiveNotification)
+                    }
+                    self?.resync()
+                }
             }
         }
     }
@@ -84,7 +91,6 @@ final class VolumeService {
         if UIApplication.shared.applicationState == .active {
             return session.outputVolume
         }
-        try? session.setActive(true)
         if let value = mediaVolume() { return value }
         if musicPlayer.responds(to: NSSelectorFromString("volume")),
            let value = (musicPlayer.value(forKey: "volume") as? NSNumber)?.floatValue, (0...1).contains(value) {

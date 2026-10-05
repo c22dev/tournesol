@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		014B2A06C26D9E04223BE072 /* DeviceViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5816F47D10D42C6C7229C9C /* DeviceViews.swift */; };
+		04E27525CBA9BFD1CBD6223D /* PushRelay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 627C915D80610D1897DC9928 /* PushRelay.swift */; };
 		0AAC5F1A0B4D5568FC212CA5 /* BLEPeripheral.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D411DF55E3C80556EE98966 /* BLEPeripheral.swift */; };
 		0CBFB11CADF57397E228D401 /* RGB.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E8E9A2454111B642E1A5DB6 /* RGB.swift */; };
 		0D46705E228B8D6565B719D1 /* RemoteActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F8AC8E51C33745DF3B72BC6 /* RemoteActivityAttributes.swift */; };
@@ -17,11 +18,14 @@
 		242A04C7D585C88BC4F78868 /* CatalogLookup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63707EC349C4A069A0796ACD /* CatalogLookup.swift */; };
 		25DB43AE144D28BD44F3AD73 /* BLEPeripheral.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D411DF55E3C80556EE98966 /* BLEPeripheral.swift */; };
 		282D86D95F1AF615B95C7962 /* PlayerComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E5BD5191E622B5BB09DB126 /* PlayerComponents.swift */; };
+		2914B9BDAEFEBD200A15418A /* PushRelay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 627C915D80610D1897DC9928 /* PushRelay.swift */; };
 		2DDC8F64F893B71C5A77D0D0 /* CompositeTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = E28EA3C157DC32B9E595AEA9 /* CompositeTransport.swift */; };
 		2F1A4A5E897CA574C61D365D /* TournesolMacApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7480B0B7E72ADA07961383E /* TournesolMacApp.swift */; };
 		2F7C74B4CB2A6E0FD3B10495 /* RemoteActionIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0E0A458324BE6DE6D9CDEC4 /* RemoteActionIntent.swift */; };
 		2FE06ACB6A91AFFD91636D4B /* ArtworkStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B9FCB47331B2149F0ECABD9 /* ArtworkStore.swift */; };
+		319C4C0703DE020FAAF90D5E /* PlaybackControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9987BFF4AB17D33532710ED9 /* PlaybackControls.swift */; };
 		333BDAD11940679473320E2B /* PlayerComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E5BD5191E622B5BB09DB126 /* PlayerComponents.swift */; };
+		39B8F731267DE3B158590406 /* ControlSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0ADA54E4E1F68701DE7CEA9 /* ControlSnapshot.swift */; };
 		3E0916C813EE0770FFF4F0BA /* RGB.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E8E9A2454111B642E1A5DB6 /* RGB.swift */; };
 		3F7F043F54EDEF274E818E64 /* MusicPlayerSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7A929D2BDB410CD8ACA1006 /* MusicPlayerSource.swift */; };
 		447319F77E600EF948D1158D /* Playback.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32A0A19E44B408D516BF8692 /* Playback.swift */; };
@@ -30,6 +34,7 @@
 		4E0BF8E650CBE035D405E4F1 /* PlatformImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEAD02C390052A15159B8C73 /* PlatformImage.swift */; };
 		4E417AE9242C222D022687BC /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = FCC5806CE75645544078BF09 /* Assets.xcassets */; };
 		4F94626E1D703B69DB86C9D8 /* Previews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 196A1553EDDA8EA3278A63FD /* Previews.swift */; };
+		5725E4C656131206E6223BD0 /* NowPlayingBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = F54211A1C1246C404605DEBD /* NowPlayingBridge.swift */; };
 		619A3B3E7E80A6C260DE7212 /* ArtworkStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B9FCB47331B2149F0ECABD9 /* ArtworkStore.swift */; };
 		65C965EE653BEBD880D5F404 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EA98B38D749F4BB330E7D9F /* RootView.swift */; };
 		6860D7B9A694EAD485EF6A91 /* MacSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 901BC1DD296321585C0926E2 /* MacSettingsView.swift */; };
@@ -42,6 +47,7 @@
 		84A76CEE319B85A56C60CBE2 /* RemoteDevice.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6988A4C1CE3B07B8F9C2F3C /* RemoteDevice.swift */; };
 		84EE3404A74A84A6FE65C3BE /* MacRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 151095F9E9C2BD26F59EABCC /* MacRootView.swift */; };
 		867F5A5625EFFBA96441A5E0 /* CompositeTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = E28EA3C157DC32B9E595AEA9 /* CompositeTransport.swift */; };
+		86D70F22759BD48D628A0072 /* NowPlayingBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = F54211A1C1246C404605DEBD /* NowPlayingBridge.swift */; };
 		8AC792A93DF95CE942CE0305 /* Bluetooth.swift in Sources */ = {isa = PBXBuildFile; fileRef = E06F8FFE8E06055041BC689F /* Bluetooth.swift */; };
 		8AE4A2F68DCEB38D0455E096 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = FCC5806CE75645544078BF09 /* Assets.xcassets */; };
 		9234ABF98206C0E50C408A80 /* SystemAudio.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39800096564D9D1BC9911B30 /* SystemAudio.swift */; };
@@ -55,14 +61,17 @@
 		B4195D6B90BBBA318609494B /* RemoteActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F8AC8E51C33745DF3B72BC6 /* RemoteActivityAttributes.swift */; };
 		B94DD6AFA89AB4F6FE0048C6 /* LiveActivityController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22E59B282EA7B3A60871CAF2 /* LiveActivityController.swift */; };
 		BD1427699C1DF7877BF65A5E /* PairingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E18C49A52E7FB08B4FF8361 /* PairingView.swift */; };
+		BE5541340BDE7B63DB9EBFA6 /* ControlSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0ADA54E4E1F68701DE7CEA9 /* ControlSnapshot.swift */; };
 		C02C4554643632746E622B70 /* Bluetooth.swift in Sources */ = {isa = PBXBuildFile; fileRef = E06F8FFE8E06055041BC689F /* Bluetooth.swift */; };
 		C87D298C57B239A70422FB5F /* Hub.swift in Sources */ = {isa = PBXBuildFile; fileRef = E82E7143C5E165F81FB99164 /* Hub.swift */; };
+		D3BC00B850AE5A5C8234D5B0 /* ControlCenterSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = E08F44EA73742FF8532326D4 /* ControlCenterSync.swift */; };
 		D52F294BE69BD890E8195062 /* AppIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = C3A941F856C7CE399CDE0920 /* AppIcon.icon */; };
 		D87B60DB4459ECC7AE399613 /* MusicAppSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B3AF3C3467B7B898AC74DE5 /* MusicAppSource.swift */; };
 		DDA579C82FB4D2006F0DAF55 /* PairingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E18C49A52E7FB08B4FF8361 /* PairingView.swift */; };
 		DFE60894D13A35986CCB14D9 /* VolumeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1A1E0BC11788FDD58FDE8B4 /* VolumeService.swift */; };
 		E3C0603E07161E9D739414D5 /* RemoteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59BE048F58405520F3432C10 /* RemoteView.swift */; };
 		E5076A7D1061911B42BAB493 /* NowPlayingStream.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95F59A4324B5677902F997A6 /* NowPlayingStream.swift */; };
+		ECFEEFA89D7790CFBACAC10F /* SilentAudio.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E8FB0BEB377A375CD2A7141 /* SilentAudio.swift */; };
 		F030AC9BDEC7C8CA4F787694 /* Playback.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32A0A19E44B408D516BF8692 /* Playback.swift */; };
 		F787FA6322EC60B6EA8D92F8 /* BLECentral.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F9D223AA5353292773B1A00 /* BLECentral.swift */; };
 		F8BB101A9B03C7C502D0AAD3 /* RemoteActionIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0E0A458324BE6DE6D9CDEC4 /* RemoteActionIntent.swift */; };
@@ -103,7 +112,10 @@
 		32A0A19E44B408D516BF8692 /* Playback.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Playback.swift; sourceTree = "<group>"; };
 		39800096564D9D1BC9911B30 /* SystemAudio.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemAudio.swift; sourceTree = "<group>"; };
 		3A144ED770A7FEA037D57C5F /* MediaKeys.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaKeys.swift; sourceTree = "<group>"; };
+		3E8FB0BEB377A375CD2A7141 /* SilentAudio.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SilentAudio.swift; sourceTree = "<group>"; };
+		3EDA322588C345054EDB18AB /* Base.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; path = Base.xcconfig; sourceTree = "<group>"; };
 		59BE048F58405520F3432C10 /* RemoteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteView.swift; sourceTree = "<group>"; };
+		627C915D80610D1897DC9928 /* PushRelay.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PushRelay.swift; sourceTree = "<group>"; };
 		63707EC349C4A069A0796ACD /* CatalogLookup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatalogLookup.swift; sourceTree = "<group>"; };
 		6969AC7744E8E78D111EAE70 /* TournesolWidgets.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = TournesolWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		6B9FCB47331B2149F0ECABD9 /* ArtworkStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArtworkStore.swift; sourceTree = "<group>"; };
@@ -117,6 +129,7 @@
 		8EA98B38D749F4BB330E7D9F /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		901BC1DD296321585C0926E2 /* MacSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacSettingsView.swift; sourceTree = "<group>"; };
 		95F59A4324B5677902F997A6 /* NowPlayingStream.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NowPlayingStream.swift; sourceTree = "<group>"; };
+		9987BFF4AB17D33532710ED9 /* PlaybackControls.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PlaybackControls.swift; sourceTree = "<group>"; };
 		9A928E73B7EE56BD8EEB771D /* TournesolWidgets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = TournesolWidgets.entitlements; sourceTree = "<group>"; };
 		9F8AC8E51C33745DF3B72BC6 /* RemoteActivityAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteActivityAttributes.swift; sourceTree = "<group>"; };
 		9F9D223AA5353292773B1A00 /* BLECentral.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLECentral.swift; sourceTree = "<group>"; };
@@ -127,15 +140,18 @@
 		C3A941F856C7CE399CDE0920 /* AppIcon.icon */ = {isa = PBXFileReference; lastKnownFileType = wrapper.icon; path = AppIcon.icon; sourceTree = "<group>"; };
 		CB4A902DABC731C20F04D84C /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		CB6110B62D5E82BCB9D5F63A /* ShareNowPlayingIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareNowPlayingIntent.swift; sourceTree = "<group>"; };
+		D0ADA54E4E1F68701DE7CEA9 /* ControlSnapshot.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ControlSnapshot.swift; sourceTree = "<group>"; };
 		D648C5193E6FA688120F819A /* VolumeButtonForwarder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VolumeButtonForwarder.swift; sourceTree = "<group>"; };
 		DDB4C576954BB06509CDC07E /* Tournesol.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Tournesol.entitlements; sourceTree = "<group>"; };
 		E06F8FFE8E06055041BC689F /* Bluetooth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Bluetooth.swift; sourceTree = "<group>"; };
+		E08F44EA73742FF8532326D4 /* ControlCenterSync.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ControlCenterSync.swift; sourceTree = "<group>"; };
 		E28EA3C157DC32B9E595AEA9 /* CompositeTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompositeTransport.swift; sourceTree = "<group>"; };
 		E6023525E9545B35DBE90590 /* TournesolWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TournesolWidgets.swift; sourceTree = "<group>"; };
 		E7480B0B7E72ADA07961383E /* TournesolMacApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TournesolMacApp.swift; sourceTree = "<group>"; };
 		E7A929D2BDB410CD8ACA1006 /* MusicPlayerSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusicPlayerSource.swift; sourceTree = "<group>"; };
 		E82E7143C5E165F81FB99164 /* Hub.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Hub.swift; sourceTree = "<group>"; };
 		F4BBBAC155C44C8FFBF04260 /* Tournesol.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Tournesol.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		F54211A1C1246C404605DEBD /* NowPlayingBridge.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NowPlayingBridge.swift; sourceTree = "<group>"; };
 		FADD35AE6603A0A5E8F1D0D7 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		FCC5806CE75645544078BF09 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		FE0EE37001A3B7A0293A2698 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
@@ -156,6 +172,7 @@
 			children = (
 				63707EC349C4A069A0796ACD /* CatalogLookup.swift */,
 				FEAD02C390052A15159B8C73 /* PlatformImage.swift */,
+				627C915D80610D1897DC9928 /* PushRelay.swift */,
 			);
 			path = Util;
 			sourceTree = "<group>";
@@ -176,6 +193,7 @@
 				6B9FCB47331B2149F0ECABD9 /* ArtworkStore.swift */,
 				A0E0A458324BE6DE6D9CDEC4 /* RemoteActionIntent.swift */,
 				9F8AC8E51C33745DF3B72BC6 /* RemoteActivityAttributes.swift */,
+				D0ADA54E4E1F68701DE7CEA9 /* ControlSnapshot.swift */,
 			);
 			path = LiveActivity;
 			sourceTree = "<group>";
@@ -187,6 +205,7 @@
 				16BE2E78B20D3AF48A8F0405 /* RemoteLiveActivity.swift */,
 				9A928E73B7EE56BD8EEB771D /* TournesolWidgets.entitlements */,
 				E6023525E9545B35DBE90590 /* TournesolWidgets.swift */,
+				9987BFF4AB17D33532710ED9 /* PlaybackControls.swift */,
 			);
 			path = Widgets;
 			sourceTree = "<group>";
@@ -241,6 +260,7 @@
 				5B60EADF356F6DBFE44CBCED /* Shared */,
 				3E3E91172B852E0E360ABC1C /* Widgets */,
 				32D4C65B1EEC26709EA884A7 /* Products */,
+				EBBA4721DE2BB074668151E3 /* Config */,
 			);
 			sourceTree = "<group>";
 		};
@@ -256,6 +276,8 @@
 				858BA17B9AE382D2E168127E /* TournesolApp.swift */,
 				D648C5193E6FA688120F819A /* VolumeButtonForwarder.swift */,
 				B1A1E0BC11788FDD58FDE8B4 /* VolumeService.swift */,
+				E08F44EA73742FF8532326D4 /* ControlCenterSync.swift */,
+				3E8FB0BEB377A375CD2A7141 /* SilentAudio.swift */,
 			);
 			path = iOS;
 			sourceTree = "<group>";
@@ -267,8 +289,18 @@
 				32A0A19E44B408D516BF8692 /* Playback.swift */,
 				B6988A4C1CE3B07B8F9C2F3C /* RemoteDevice.swift */,
 				7E8E9A2454111B642E1A5DB6 /* RGB.swift */,
+				F54211A1C1246C404605DEBD /* NowPlayingBridge.swift */,
 			);
 			path = Model;
+			sourceTree = "<group>";
+		};
+		EBBA4721DE2BB074668151E3 /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				3EDA322588C345054EDB18AB /* Base.xcconfig */,
+			);
+			name = Config;
+			path = Config;
 			sourceTree = "<group>";
 		};
 		F4C829A9C65AA53BDED0095C /* UI */ = {
@@ -297,8 +329,6 @@
 			dependencies = (
 			);
 			name = TournesolWidgets;
-			packageProductDependencies = (
-			);
 			productName = TournesolWidgets;
 			productReference = 6969AC7744E8E78D111EAE70 /* TournesolWidgets.appex */;
 			productType = "com.apple.product-type.app-extension";
@@ -315,8 +345,6 @@
 			dependencies = (
 			);
 			name = TournesolMac;
-			packageProductDependencies = (
-			);
 			productName = TournesolMac;
 			productReference = 6D3ABDA3205A7451D68FA585 /* TournesolMac.app */;
 			productType = "com.apple.product-type.application";
@@ -335,8 +363,6 @@
 				A12A3D4A03F8C1286C1CE2D7 /* PBXTargetDependency */,
 			);
 			name = Tournesol;
-			packageProductDependencies = (
-			);
 			productName = Tournesol;
 			productReference = F4BBBAC155C44C8FFBF04260 /* Tournesol.app */;
 			productType = "com.apple.product-type.application";
@@ -434,6 +460,8 @@
 				9234ABF98206C0E50C408A80 /* SystemAudio.swift in Sources */,
 				2F1A4A5E897CA574C61D365D /* TournesolMacApp.swift in Sources */,
 				7895AD60FF65856604C615B1 /* Trust.swift in Sources */,
+				04E27525CBA9BFD1CBD6223D /* PushRelay.swift in Sources */,
+				86D70F22759BD48D628A0072 /* NowPlayingBridge.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -447,6 +475,8 @@
 				0D46705E228B8D6565B719D1 /* RemoteActivityAttributes.swift in Sources */,
 				A5C012F4EF5B3D14DAEC33D5 /* RemoteLiveActivity.swift in Sources */,
 				751A8AC10DAAF69F842F2D9B /* TournesolWidgets.swift in Sources */,
+				BE5541340BDE7B63DB9EBFA6 /* ControlSnapshot.swift in Sources */,
+				319C4C0703DE020FAAF90D5E /* PlaybackControls.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -480,6 +510,11 @@
 				9B2B734FBE12A99991DECA08 /* Trust.swift in Sources */,
 				177FFB9B7A7C9D7EFA0CB763 /* VolumeButtonForwarder.swift in Sources */,
 				DFE60894D13A35986CCB14D9 /* VolumeService.swift in Sources */,
+				39B8F731267DE3B158590406 /* ControlSnapshot.swift in Sources */,
+				D3BC00B850AE5A5C8234D5B0 /* ControlCenterSync.swift in Sources */,
+				2914B9BDAEFEBD200A15418A /* PushRelay.swift in Sources */,
+				5725E4C656131206E6223BD0 /* NowPlayingBridge.swift in Sources */,
+				ECFEEFA89D7790CFBACAC10F /* SilentAudio.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -536,6 +571,7 @@
 		};
 		21C179E76B78FB4252F8D4D9 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 3EDA322588C345054EDB18AB /* Base.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -608,6 +644,7 @@
 		};
 		31FCA839C55D4A36C53F4FC7 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 3EDA322588C345054EDB18AB /* Base.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;

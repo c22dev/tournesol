@@ -1,0 +1,2 @@
+// Push relay settings live in Secrets.xcconfig, which is not committed.
+#include? "Secrets.xcconfig"

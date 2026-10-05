@@ -443,14 +443,14 @@ struct TransportControls: View {
                 device.send(.togglePlayPause)
             } label: {
                 Image(systemName: device.state.isPlaying ? "pause.fill" : "play.fill")
-                    .font(.system(size: 34 * scale, weight: .bold))
+                    .font(.system(size: 44 * scale, weight: .bold))
                     .contentTransition(.symbolEffect(.replace.downUp.byLayer))
                     .offset(x: device.state.isPlaying ? 0 : 2 * scale)
-                    .frame(width: 82 * scale, height: 82 * scale)
+                    .frame(width: 92 * scale, height: 92 * scale)
                     .contentShape(.circle)
             }
             .buttonStyle(PressableStyle())
-            .glassEffect(.regular.tint(device.accent.color.opacity(0.5)).interactive(), in: .circle)
+//            .glassEffect(.regular.tint(device.accent.color.opacity(0.5)).interactive(), in: .circle)
             .sensoryFeedback(.impact(weight: .medium), trigger: toggles)
             .accessibilityLabel(device.state.isPlaying ? "Pause" : "Play")
 

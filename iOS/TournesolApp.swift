@@ -30,6 +30,9 @@ final class AppModel {
     let hub: Hub
     let liveActivity: LiveActivityController
     let volumeButtons: VolumeButtonForwarder
+    let controls: ControlCenterSync
+    let nowPlaying: NowPlayingBridge
+    private var lifecycle: [NSObjectProtocol] = []
 
     private init() {
         let info = DeviceInfo.current
@@ -42,7 +45,16 @@ final class AppModel {
         }
         liveActivity = LiveActivityController(store: hub.store)
         let hub = hub
+        liveActivity.onTokens = { hub.setPushTokens($0) }
         volumeButtons = VolumeButtonForwarder(store: hub.store) { hub.setControllerFocus($0) }
+        controls = ControlCenterSync(store: hub.store)
+        nowPlaying = NowPlayingBridge(store: hub.store)
+        hub.wantsDiscovery = UIApplication.shared.applicationState != .background
+        lifecycle = [UIApplication.didBecomeActiveNotification, UIApplication.didEnterBackgroundNotification].map { name in
+            NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { _ in
+                MainActor.assumeIsolated { hub.wantsDiscovery = name == UIApplication.didBecomeActiveNotification }
+            }
+        }
     }
 
     func shareNowPlaying(for duration: Duration = .seconds(15)) async {
@@ -67,7 +79,13 @@ final class AppModel {
 }
 
 enum RemoteIntentRouter {
-    static func perform(_ action: RemoteAction, on deviceID: String) async {
+    static func perform(_ action: RemoteAction, on requestedID: String) async {
+        var snapshot = ControlSnapshot.load()
+        guard let deviceID = requestedID == ControlSnapshot.currentDevice ? snapshot.deviceID : requestedID else { return }
+        if requestedID == ControlSnapshot.currentDevice, action == .togglePlayPause {
+            snapshot.isPlaying.toggle()
+            ControlCenterSync.publish(snapshot)
+        }
         let original = action == .togglePlayPause ? await LiveActivityController.flipPlayback(deviceID: deviceID) : nil
         let store = AppModel.shared.hub.store
         let deadline = Date.now.addingTimeInterval(5)

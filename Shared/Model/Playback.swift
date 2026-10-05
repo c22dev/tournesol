@@ -154,6 +154,13 @@ nonisolated enum Message: Codable, Sendable {
     case requestState
     case unpair
     case controllerFocus(target: String?)
+    case pushTokens(PushTokens)
+}
+
+nonisolated struct PushTokens: Codable, Equatable, Sendable {
+    var environment: String
+    var startToken: String?
+    var activityTokens: [String: String] = [:]
 }
 
 nonisolated enum MessageCodec {

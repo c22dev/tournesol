@@ -28,6 +28,11 @@ extension MessageTransport {
     func send(_ message: Envelope, to peer: UUID) {
         send(message, to: peer, lane: .control)
     }
+
+    func isInitiator(_ peer: UUID) -> Bool { false }
+    func close(_ peer: UUID) {}
+    func resumeAll() {}
+    func setScanning(_ scanning: Bool) {}
 }
 
 final class Hub {
@@ -84,6 +89,17 @@ final class Hub {
     private var pollTask: Task<Void, Never>?
     private var fastPollTask: Task<Void, Never>?
     private var controllers: [String: String] = [:]
+    private var localTokens: PushTokens?
+    private var peerTokens: [String: PushTokens] = Hub.loadPeerTokens()
+    private var lastStartPush: [String: ContinuousClock.Instant] = [:]
+    private var lastPushedState: PlaybackState?
+    private var controllerActivity: [String: ContinuousClock.Instant] = [:]
+    private var controllerPolled: [String: ContinuousClock.Instant] = [:]
+    private var mobilePolled: [String: ContinuousClock.Instant] = [:]
+    private var lastPlaying: [String: ContinuousClock.Instant] = [:]
+    var wantsDiscovery = true {
+        didSet { updateDiscovery() }
+    }
     private var localFocus: String?
     private var preparedSignatures: [String: String] = [:]
 
@@ -94,7 +110,7 @@ final class Hub {
         local.onCommand = { [player] in player.perform($0) }
         local.onRefresh = { [player] in player.refresh() }
         store.devices = [local]
-        store.selectedID = local.id
+        store.autoSelect(local.id)
         store.onPair = { [weak self] in self?.pair(with: $0) }
         store.onForget = { [weak self] in self?.forget($0) }
         store.onTransfer = { [weak self] in self?.transfer(from: $0, to: $1) }
@@ -137,10 +153,72 @@ final class Hub {
     }
 
     private func pollControllers() {
+        let now = ContinuousClock.now
         for (controller, target) in controllers {
             let isPlaying = target == local.id ? local.state.isPlaying : store.device(id: target)?.state.isPlaying ?? false
-            if isPlaying {
-                sendSecure(.requestState, toDevice: controller)
+            guard isPlaying else { continue }
+            let isActive = controllerActivity[controller].map { now - $0 < .seconds(90) } ?? false
+            let interval: Duration = isActive ? .seconds(1) : .seconds(5)
+            if let last = controllerPolled[controller], now - last < interval { continue }
+            controllerPolled[controller] = now
+            sendSecure(.requestState, toDevice: controller)
+        }
+    }
+
+    private func updateDiscovery() {
+        let missing = security.trusted.keys.contains { store.device(id: $0)?.isConnected != true }
+        transport.setScanning(wantsDiscovery || missing)
+    }
+
+    private func dropDuplicateLinks(of device: RemoteDevice) {
+        guard local.id > device.id else { return }
+        let keyed = (links[device.id] ?? []).filter { linkStates[$0]?.key != nil }
+        guard keyed.contains(where: { !transport.isInitiator($0) }) else { return }
+        for link in keyed where transport.isInitiator(link) {
+            transport.close(link)
+        }
+    }
+
+    func setPushTokens(_ tokens: PushTokens) {
+        guard tokens != localTokens else { return }
+        localTokens = tokens
+        for device in store.remotes {
+            sendSecure(.pushTokens(tokens), toDevice: device.id)
+        }
+    }
+
+    private static func loadPeerTokens() -> [String: PushTokens] {
+        guard let data = UserDefaults.standard.data(forKey: "peerPushTokens") else { return [:] }
+        return (try? JSONDecoder().decode([String: PushTokens].self, from: data)) ?? [:]
+    }
+
+    private func savePeerTokens() {
+        UserDefaults.standard.set(try? JSONEncoder().encode(peerTokens), forKey: "peerPushTokens")
+    }
+
+    private func pushLiveActivities() {
+        let current = player.state
+        let previous = lastPushedState ?? .idle
+        lastPushedState = current
+        guard PushRelay.isConfigured, current.hasTrack else { return }
+
+        let started = current.isPlaying && !previous.isPlaying
+        let changed = started || current.isPlaying != previous.isPlaying || current.track.signature != previous.track.signature
+        guard changed else { return }
+
+        let artworkKey = current.catalogID.map { "catalog-\($0)" } ?? current.artworkID
+        for (peerID, tokens) in peerTokens where security.trusted[peerID] != nil {
+            let peer = store.device(id: peerID)
+            if let token = tokens.activityTokens[local.id] {
+                guard peer?.isConnected != true,
+                      let payload = PushRelay.payload(event: "update", state: current, device: local.info, artworkID: artworkKey, tint: local.tint, alert: false)
+                else { continue }
+                Task { await PushRelay.send(token: token, environment: tokens.environment, payload: payload, priority: started ? 10 : 5) }
+            } else if started, peer?.state.isPlaying != true, let token = tokens.startToken {
+                if let last = lastStartPush[peerID], ContinuousClock.now - last < .seconds(60) { continue }
+                guard let payload = PushRelay.payload(event: "start", state: current, device: local.info, artworkID: artworkKey, tint: local.tint, alert: true) else { continue }
+                lastStartPush[peerID] = .now
+                Task { await PushRelay.send(token: token, environment: tokens.environment, payload: payload, priority: 10) }
             }
         }
     }
@@ -155,7 +233,7 @@ final class Hub {
         let status = TransferStatus(targetName: target.displayName)
         withAnimation {
             store.transfer = status
-            store.selectedID = target.id
+            store.autoSelect(target.id)
         }
         if !source.isLocal { source.refresh() }
         target.expectPlayback(of: track)
@@ -189,7 +267,7 @@ final class Hub {
                 source.send(.play)
                 withAnimation {
                     status.phase = .failed
-                    store.selectedID = source.id
+                    store.autoSelect(source.id)
                 }
                 try? await Task.sleep(for: .seconds(2.5))
                 if store.transfer === status {
@@ -231,7 +309,13 @@ final class Hub {
     }
 
     private func pollMobilePeers() {
+        let now = ContinuousClock.now
         for device in store.remotes where device.isConnected && device.info.kind != .mac && device.info.kind != .macBook {
+            if device.state.isPlaying { lastPlaying[device.id] = now }
+            let recentlyPlayed = lastPlaying[device.id].map { now - $0 < .seconds(120) } ?? false
+            let interval: Duration = recentlyPlayed ? .seconds(15) : .seconds(60)
+            if let last = mobilePolled[device.id], now - last < interval - .seconds(1) { continue }
+            mobilePolled[device.id] = now
             sendSecure(.requestState, toDevice: device.id)
         }
     }
@@ -249,13 +333,18 @@ final class Hub {
         for device in store.remotes {
             if let link = activeLink(for: device.id) { push(to: link) }
         }
+        pushLiveActivities()
     }
 
     private func update(_ device: RemoteDevice, to state: PlaybackState) {
+        let started = state.isPlaying && !device.state.isPlaying
         withAnimation(.smooth) {
             device.receive(state)
-            if state.isPlaying, device.isControllable {
-                store.selectedID = device.id
+            guard state.isPlaying, device.isControllable, store.selectedID != device.id else { return }
+            let selectedIsIdle = store.selected?.state.isPlaying != true
+            let manualIsRecent = store.lastManualSelection.map { ContinuousClock.now - $0 < .seconds(30) } ?? false
+            if started || (selectedIsIdle && !manualIsRecent) {
+                store.autoSelect(device.id)
             }
         }
     }
@@ -339,6 +428,8 @@ final class Hub {
 
         links[device.id] = nil
         controllers[device.id] = nil
+        transport.resumeAll()
+        updateDiscovery()
         removals[device.id] = Task { [weak self] in
             try? await Task.sleep(for: .seconds(4))
             guard !Task.isCancelled else { return }
@@ -376,15 +467,22 @@ final class Hub {
             cacheArtwork(data, for: id)
             refreshArtwork(for: device)
         case .command(let command):
+            if controllers[device.id] != nil { controllerActivity[device.id] = .now }
             player.perform(command)
         case .requestState:
             player.refresh()
             push(to: link, force: true)
         case .unpair:
             security.forget(device.id)
+            peerTokens[device.id] = nil
+            savePeerTokens()
             markUnpaired(device)
+        case .pushTokens(let tokens):
+            peerTokens[device.id] = tokens
+            savePeerTokens()
         case .controllerFocus(let target):
             controllers[device.id] = target
+            controllerActivity[device.id] = target == nil ? nil : .now
         }
     }
 
@@ -435,7 +533,12 @@ final class Hub {
             if let localFocus {
                 sendSecure(.controllerFocus(target: localFocus), to: link)
             }
+            if let localTokens {
+                sendSecure(.pushTokens(localTokens), to: link)
+            }
         }
+        dropDuplicateLinks(of: device)
+        updateDiscovery()
     }
 
     private func markUnpaired(_ device: RemoteDevice) {
@@ -456,6 +559,9 @@ final class Hub {
             sendSecure(.unpair, to: link)
         }
         security.forget(id)
+        peerTokens[id] = nil
+        savePeerTokens()
+        updateDiscovery()
         if let device = store.device(id: id) {
             markUnpaired(device)
         }
@@ -536,7 +642,7 @@ final class Hub {
         for link in links[hello.info.id] ?? [] where linkStates[link]?.hello?.publicKey == hello.publicKey {
             establish(link)
         }
-        store.selectedID = hello.info.id
+        store.autoSelect(hello.info.id)
     }
 
     private func showPrompt(for device: RemoteDevice) {

@@ -127,13 +127,8 @@ final class MediaKeyController {
               !key.isVolume || defaults.bool(forKey: Self.volumeKey)
         else { return false }
 
-        let device: RemoteDevice?
-        if key.isVolume && !store.devices.contains(where: { $0.state.isPlaying }) {
-            device = store.devices.first(where: \.isLocal)
-        } else {
-            device = store.selected.flatMap { $0.isLocal || !$0.isConnected ? nil : $0 }
-        }
-        guard let device else { return false }
+        if key.isVolume && !store.devices.contains(where: { $0.state.isPlaying }) { return false }
+        guard let device = store.selected, !device.isLocal, device.isConnected else { return false }
         guard isDown else { return true }
 
         let symbol: String

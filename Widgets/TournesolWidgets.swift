@@ -12,5 +12,8 @@ import WidgetKit
 struct TournesolWidgets: WidgetBundle {
     var body: some Widget {
         RemoteLiveActivity()
+        PlayPauseControl()
+        NextTrackControl()
+        PreviousTrackControl()
     }
 }

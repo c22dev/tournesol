@@ -13,6 +13,7 @@ struct MacSettingsView: View {
     @AppStorage(MediaKeyController.enabledKey) private var mediaKeysEnabled = true
     @AppStorage(MediaKeyController.volumeKey) private var volumeKeysEnabled = true
     @State private var isTrusted = AXIsProcessTrusted()
+    @AppStorage(NowPlayingBridge.enabledKey) private var nowPlayingEnabled = false
 
     var body: some View {
         Form {
@@ -32,6 +33,15 @@ struct MacSettingsView: View {
                 Text("Keyboard")
             } footer: {
                 Text("When This Mac is selected, media keys keep controlling Music as usual.")
+                    .foregroundStyle(.secondary)
+            }
+
+            Section {
+                Toggle("Show remote devices in Now Playing", isOn: $nowPlayingEnabled)
+            } header: {
+                Text("Now Playing")
+            } footer: {
+                Text("When another device is selected, it appears in Control Center, the menu bar and on your AirPods controls like a local player. No audio is played on this Mac.")
                     .foregroundStyle(.secondary)
             }
 
