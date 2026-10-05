@@ -252,10 +252,9 @@ final class Hub {
     }
 
     private func update(_ device: RemoteDevice, to state: PlaybackState) {
-        let started = state.isPlaying && !device.state.isPlaying
         withAnimation(.smooth) {
             device.receive(state)
-            if started, device.isControllable {
+            if state.isPlaying, device.isControllable {
                 store.selectedID = device.id
             }
         }
