@@ -58,7 +58,8 @@ final class MusicAppSource: LocalPlayer {
         case .previous: script.send("back track")
         case .seek(let position): script.send("set player position to \(position)")
         case .setVolume(let volume): audio.volume = volume
-        case .loadTrack(let track, _): load(track)
+        case .loadTrack(let track, _, _): load(track)
+        case .enqueue: break
         case .startLoaded(let position): startLoaded(at: position)
         case .handOff: fadeOutAndPause()
         case .release: break
@@ -225,6 +226,7 @@ final class MusicAppSource: LocalPlayer {
     private var preparing: Set<String> = []
     private var loading: Task<Void, Never>?
     private var loaded: (track: TrackReference, located: Located)?
+    func upcomingTracks() async -> [TrackReference] { [] }
 
     func prepare(_ track: TrackReference) {
         let signature = track.signature

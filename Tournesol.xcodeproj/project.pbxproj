@@ -25,6 +25,7 @@
 		2FE06ACB6A91AFFD91636D4B /* ArtworkStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B9FCB47331B2149F0ECABD9 /* ArtworkStore.swift */; };
 		319C4C0703DE020FAAF90D5E /* PlaybackControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9987BFF4AB17D33532710ED9 /* PlaybackControls.swift */; };
 		333BDAD11940679473320E2B /* PlayerComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E5BD5191E622B5BB09DB126 /* PlayerComponents.swift */; };
+		37BDB2F34A70DEC05467EDD0 /* SearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C861D78A664B64DE142A13 /* SearchView.swift */; };
 		39B8F731267DE3B158590406 /* ControlSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0ADA54E4E1F68701DE7CEA9 /* ControlSnapshot.swift */; };
 		3E0916C813EE0770FFF4F0BA /* RGB.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E8E9A2454111B642E1A5DB6 /* RGB.swift */; };
 		3F7F043F54EDEF274E818E64 /* MusicPlayerSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7A929D2BDB410CD8ACA1006 /* MusicPlayerSource.swift */; };
@@ -56,6 +57,7 @@
 		A016EE1DEB1EC453627DACCA /* TournesolApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 858BA17B9AE382D2E168127E /* TournesolApp.swift */; };
 		A1C0A9B7AF86CD5DB6430763 /* DeviceViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5816F47D10D42C6C7229C9C /* DeviceViews.swift */; };
 		A5C012F4EF5B3D14DAEC33D5 /* RemoteLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16BE2E78B20D3AF48A8F0405 /* RemoteLiveActivity.swift */; };
+		A9D4B75DA9699178FD29D238 /* SearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C861D78A664B64DE142A13 /* SearchView.swift */; };
 		ADC8EEEE7A30EE58677D70C2 /* RGB.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E8E9A2454111B642E1A5DB6 /* RGB.swift */; };
 		AE86DF97E35441339F95B6FF /* RemoteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59BE048F58405520F3432C10 /* RemoteView.swift */; };
 		B4195D6B90BBBA318609494B /* RemoteActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F8AC8E51C33745DF3B72BC6 /* RemoteActivityAttributes.swift */; };
@@ -114,12 +116,13 @@
 		3A144ED770A7FEA037D57C5F /* MediaKeys.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaKeys.swift; sourceTree = "<group>"; };
 		3E8FB0BEB377A375CD2A7141 /* SilentAudio.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SilentAudio.swift; sourceTree = "<group>"; };
 		3EDA322588C345054EDB18AB /* Base.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; path = Base.xcconfig; sourceTree = "<group>"; };
+		50C861D78A664B64DE142A13 /* SearchView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SearchView.swift; sourceTree = "<group>"; };
 		59BE048F58405520F3432C10 /* RemoteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteView.swift; sourceTree = "<group>"; };
 		627C915D80610D1897DC9928 /* PushRelay.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PushRelay.swift; sourceTree = "<group>"; };
 		63707EC349C4A069A0796ACD /* CatalogLookup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatalogLookup.swift; sourceTree = "<group>"; };
-		6969AC7744E8E78D111EAE70 /* TournesolWidgets.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = TournesolWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		6969AC7744E8E78D111EAE70 /* TournesolWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = TournesolWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		6B9FCB47331B2149F0ECABD9 /* ArtworkStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArtworkStore.swift; sourceTree = "<group>"; };
-		6D3ABDA3205A7451D68FA585 /* TournesolMac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; name = TournesolMac.app; path = Tournesol.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		6D3ABDA3205A7451D68FA585 /* Tournesol.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Tournesol.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		7D411DF55E3C80556EE98966 /* BLEPeripheral.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLEPeripheral.swift; sourceTree = "<group>"; };
 		7E18C49A52E7FB08B4FF8361 /* PairingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairingView.swift; sourceTree = "<group>"; };
 		7E8E9A2454111B642E1A5DB6 /* RGB.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RGB.swift; sourceTree = "<group>"; };
@@ -181,7 +184,7 @@
 			isa = PBXGroup;
 			children = (
 				F4BBBAC155C44C8FFBF04260 /* Tournesol.app */,
-				6D3ABDA3205A7451D68FA585 /* TournesolMac.app */,
+				6D3ABDA3205A7451D68FA585 /* Tournesol.app */,
 				6969AC7744E8E78D111EAE70 /* TournesolWidgets.appex */,
 			);
 			name = Products;
@@ -299,7 +302,6 @@
 			children = (
 				3EDA322588C345054EDB18AB /* Base.xcconfig */,
 			);
-			name = Config;
 			path = Config;
 			sourceTree = "<group>";
 		};
@@ -311,6 +313,7 @@
 				1E5BD5191E622B5BB09DB126 /* PlayerComponents.swift */,
 				196A1553EDDA8EA3278A63FD /* Previews.swift */,
 				59BE048F58405520F3432C10 /* RemoteView.swift */,
+				50C861D78A664B64DE142A13 /* SearchView.swift */,
 			);
 			path = UI;
 			sourceTree = "<group>";
@@ -346,7 +349,7 @@
 			);
 			name = TournesolMac;
 			productName = TournesolMac;
-			productReference = 6D3ABDA3205A7451D68FA585 /* TournesolMac.app */;
+			productReference = 6D3ABDA3205A7451D68FA585 /* Tournesol.app */;
 			productType = "com.apple.product-type.application";
 		};
 		D3E9F943169311E13FC27A1B /* Tournesol */ = {
@@ -374,7 +377,7 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
-				LastUpgradeCheck = 1430;
+				LastUpgradeCheck = 2700;
 				TargetAttributes = {
 					8A01108D8C1D1754950CEEC9 = {
 						DevelopmentTeam = P69N7G8867;
@@ -462,6 +465,7 @@
 				7895AD60FF65856604C615B1 /* Trust.swift in Sources */,
 				04E27525CBA9BFD1CBD6223D /* PushRelay.swift in Sources */,
 				86D70F22759BD48D628A0072 /* NowPlayingBridge.swift in Sources */,
+				A9D4B75DA9699178FD29D238 /* SearchView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -515,6 +519,7 @@
 				2914B9BDAEFEBD200A15418A /* PushRelay.swift in Sources */,
 				5725E4C656131206E6223BD0 /* NowPlayingBridge.swift in Sources */,
 				ECFEEFA89D7790CFBACAC10F /* SilentAudio.swift in Sources */,
+				37BDB2F34A70DEC05467EDD0 /* SearchView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -607,6 +612,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = P69N7G8867;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -634,6 +640,7 @@
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
@@ -680,6 +687,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = P69N7G8867;
 				ENABLE_NS_ASSERTIONS = NO;
@@ -700,6 +708,7 @@
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
@@ -731,6 +740,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = macOS/TournesolMac.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
+				DEAD_CODE_STRIPPING = YES;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				INFOPLIST_FILE = macOS/Info.plist;
@@ -740,6 +750,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = ch.cclerc.Tournesol.mac;
 				PRODUCT_NAME = Tournesol;
+				REGISTER_APP_GROUPS = YES;
 				SDKROOT = macosx;
 			};
 			name = Release;
@@ -750,6 +761,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = macOS/TournesolMac.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
+				DEAD_CODE_STRIPPING = YES;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				INFOPLIST_FILE = macOS/Info.plist;
@@ -759,6 +771,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = ch.cclerc.Tournesol.mac;
 				PRODUCT_NAME = Tournesol;
+				REGISTER_APP_GROUPS = YES;
 				SDKROOT = macosx;
 			};
 			name = Debug;

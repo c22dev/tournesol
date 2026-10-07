@@ -30,10 +30,7 @@ final class VolumeService {
     private init() {
         view = MPVolumeView(frame: CGRect(x: -1000, y: -1000, width: 1, height: 1))
         view.alpha = 0.01
-        try? session.setCategory(.ambient, options: .mixWithOthers)
-        if UIApplication.shared.applicationState != .background {
-            try? session.setActive(true)
-        }
+        AudioSessionQueue.shared.useAmbient(activate: UIApplication.shared.applicationState != .background)
         lastReading = session.outputVolume
         current = Double(lastReading)
         observation = session.observe(\.outputVolume, options: [.new]) { [weak self] _, change in
@@ -44,7 +41,7 @@ final class VolumeService {
             NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
                 MainActor.assumeIsolated {
                     if !SilentAudio.isRunning {
-                        try? self?.session.setActive(name == UIApplication.didBecomeActiveNotification)
+                        AudioSessionQueue.shared.setActive(name == UIApplication.didBecomeActiveNotification)
                     }
                     self?.resync()
                 }

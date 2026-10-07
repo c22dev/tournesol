@@ -122,7 +122,8 @@ nonisolated enum Command: Codable, Sendable {
     case play, pause, togglePlayPause, next, previous
     case seek(TimeInterval)
     case setVolume(Double)
-    case loadTrack(TrackReference, at: TimeInterval)
+    case loadTrack(TrackReference, at: TimeInterval, upcoming: [TrackReference])
+    case enqueue(TrackReference, next: Bool)
     case startLoaded(at: TimeInterval)
     case handOff
     case release
@@ -155,6 +156,8 @@ nonisolated enum Message: Codable, Sendable {
     case unpair
     case controllerFocus(target: String?)
     case pushTokens(PushTokens)
+    case requestQueue
+    case queue([TrackReference])
 }
 
 nonisolated struct PushTokens: Codable, Equatable, Sendable {

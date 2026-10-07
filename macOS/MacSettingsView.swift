@@ -14,6 +14,7 @@ struct MacSettingsView: View {
     @AppStorage(MediaKeyController.volumeKey) private var volumeKeysEnabled = true
     @State private var isTrusted = AXIsProcessTrusted()
     @AppStorage(NowPlayingBridge.enabledKey) private var nowPlayingEnabled = false
+    @State private var opensAtLogin = LoginItem.isEnabled
 
     var body: some View {
         Form {
@@ -33,6 +34,19 @@ struct MacSettingsView: View {
                 Text("Keyboard")
             } footer: {
                 Text("When This Mac is selected, media keys keep controlling Music as usual.")
+                    .foregroundStyle(.secondary)
+            }
+
+            Section {
+                Toggle("Open at login", isOn: $opensAtLogin)
+                    .onChange(of: opensAtLogin) { _, enabled in
+                        LoginItem.setEnabled(enabled)
+                        opensAtLogin = LoginItem.isEnabled
+                    }
+            } header: {
+                Text("General")
+            } footer: {
+                Text("At login, Tournesol starts in the menu bar without opening its window.")
                     .foregroundStyle(.secondary)
             }
 

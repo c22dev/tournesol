@@ -63,9 +63,14 @@ final class NowPlayingBridge {
 
         #if os(iOS)
         if device.state.isPlaying {
-            silence.start(keepAirPodsFree: UserDefaults.standard.bool(forKey: Self.keepAirPodsFreeKey))
+            if silence.start(keepAirPodsFree: UserDefaults.standard.bool(forKey: Self.keepAirPodsFreeKey)) {
+                Task { [weak self] in
+                    try? await Task.sleep(for: .milliseconds(600))
+                    if let device = self?.mirrored { self?.publish(device) }
+                }
+            }
         } else {
-            silence.stop()
+            silence.pause()
         }
         #endif
     }
@@ -84,7 +89,7 @@ final class NowPlayingBridge {
         ]
         let center = MPNowPlayingInfoCenter.default()
         if let image = device.artwork {
-            info[MPMediaItemPropertyArtwork] = MPMediaItemArtwork(boundsSize: image.size) { _ in image }
+            info[MPMediaItemPropertyArtwork] = Self.artwork(for: image)
         } else if let existing = center.nowPlayingInfo?[MPMediaItemPropertyArtwork], publishedArtworkKey == device.artworkKey {
             info[MPMediaItemPropertyArtwork] = existing
         }
@@ -93,6 +98,10 @@ final class NowPlayingBridge {
         #if os(macOS)
         center.playbackState = state.isPlaying ? .playing : .paused
         #endif
+    }
+
+    private nonisolated static func artwork(for image: PlatformImage) -> MPMediaItemArtwork {
+        MPMediaItemArtwork(boundsSize: image.size) { @Sendable _ in image }
     }
 
     private func registerCommands() {

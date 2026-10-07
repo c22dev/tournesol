@@ -15,6 +15,7 @@ protocol LocalPlayer: AnyObject {
     func perform(_ command: Command)
     func refresh()
     func prepare(_ track: TrackReference)
+    func upcomingTracks() async -> [TrackReference]
 }
 
 protocol MessageTransport: AnyObject {
@@ -102,6 +103,7 @@ final class Hub {
     }
     private var localFocus: String?
     private var preparedSignatures: [String: String] = [:]
+    private var pendingQueues: [String: [TrackReference]] = [:]
 
     init(info: DeviceInfo, player: LocalPlayer, transport: MessageTransport, pollInterval: Duration? = nil) {
         self.player = player
@@ -237,9 +239,12 @@ final class Hub {
         }
         if !source.isLocal { source.refresh() }
         target.expectPlayback(of: track)
-        target.send(.loadTrack(track, at: source.state.elapsed(at: .now)))
 
         Task {
+            let mobile: Set<DeviceKind> = [.iPhone, .iPad]
+            let upcoming = mobile.contains(source.info.kind) && mobile.contains(target.info.kind) ? await upcomingTracks(of: source) : []
+            target.send(.loadTrack(track, at: source.state.elapsed(at: .now), upcoming: upcoming))
+
             let loadDeadline = ContinuousClock.now + .seconds(6)
             while target.reportedState.loadedSignature != track.signature, ContinuousClock.now < loadDeadline {
                 try? await Task.sleep(for: .milliseconds(50))
@@ -275,6 +280,19 @@ final class Hub {
                 }
             }
         }
+    }
+
+    private func upcomingTracks(of device: RemoteDevice) async -> [TrackReference] {
+        if device.isLocal { return await player.upcomingTracks() }
+        let link = activeLink(for: device.id)
+        guard let link else { return [] }
+        pendingQueues[device.id] = nil
+        sendSecure(.requestQueue, to: link)
+        let deadline = ContinuousClock.now + .seconds(1.5)
+        while pendingQueues[device.id] == nil, ContinuousClock.now < deadline {
+            try? await Task.sleep(for: .milliseconds(50))
+        }
+        return pendingQueues.removeValue(forKey: device.id) ?? []
     }
 
     private func schedulePreparation(for device: RemoteDevice) {
@@ -477,6 +495,13 @@ final class Hub {
             peerTokens[device.id] = nil
             savePeerTokens()
             markUnpaired(device)
+        case .requestQueue:
+            Task {
+                let upcoming = await player.upcomingTracks()
+                sendSecure(.queue(upcoming), to: link)
+            }
+        case .queue(let upcoming):
+            pendingQueues[device.id] = upcoming
         case .pushTokens(let tokens):
             peerTokens[device.id] = tokens
             savePeerTokens()

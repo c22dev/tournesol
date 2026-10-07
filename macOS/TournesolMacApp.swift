@@ -6,10 +6,16 @@
 //
 
 import IOKit.ps
+import ServiceManagement
 import SwiftUI
+
+extension Notification.Name {
+    static let openMainWindow = Notification.Name("ch.cclerc.Tournesol.openMainWindow")
+}
 
 @main
 struct TournesolMacApp: App {
+    @NSApplicationDelegateAdaptor private var delegate: AppDelegate
     private let model = AppModel.shared
 
     var body: some Scene {
@@ -17,21 +23,71 @@ struct TournesolMacApp: App {
             MacRootView(store: model.hub.store)
                 .frame(minWidth: 760, minHeight: 600)
                 .preferredColorScheme(.dark)
+                .onAppear { NSApp.setActivationPolicy(.regular) }
+                .onDisappear { NSApp.setActivationPolicy(.accessory) }
         }
         .windowStyle(.hiddenTitleBar)
         .windowResizability(.contentMinSize)
+        .defaultLaunchBehavior(.suppressed)
 
         MenuBarExtra {
             MenuBarRemote(store: model.hub.store)
                 .preferredColorScheme(.dark)
         } label: {
-            Image(systemName: "sun.max.fill")
+            MenuBarLabel()
         }
         .menuBarExtraStyle(.window)
 
         Settings {
             MacSettingsView(model: model)
         }
+    }
+}
+
+private struct MenuBarLabel: View {
+    @Environment(\.openWindow) private var openWindow
+
+    var body: some View {
+        Image(systemName: "sun.max.fill")
+            .onReceive(NotificationCenter.default.publisher(for: .openMainWindow)) { _ in
+                openWindow(id: "main")
+                NSApp.activate()
+            }
+    }
+}
+
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        LoginItem.registerOnFirstLaunch()
+        let event = NSAppleEventManager.shared().currentAppleEvent
+        let launchedAtLogin = event?.eventID == kAEOpenApplication
+            && event?.paramDescriptor(forKeyword: keyAEPropData)?.enumCodeValue == keyAELaunchedAsLogInItem
+        guard !launchedAtLogin else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            NotificationCenter.default.post(name: .openMainWindow, object: nil)
+        }
+    }
+
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows: Bool) -> Bool {
+        if !hasVisibleWindows {
+            NotificationCenter.default.post(name: .openMainWindow, object: nil)
+        }
+        return false
+    }
+}
+
+enum LoginItem {
+    static var isEnabled: Bool { SMAppService.mainApp.status == .enabled }
+
+    static func setEnabled(_ enabled: Bool) {
+        try? enabled ? SMAppService.mainApp.register() : SMAppService.mainApp.unregister()
+    }
+
+    static func registerOnFirstLaunch() {
+        let key = "registeredLoginItem"
+        guard !UserDefaults.standard.bool(forKey: key) else { return }
+        UserDefaults.standard.set(true, forKey: key)
+        setEnabled(true)
     }
 }
 

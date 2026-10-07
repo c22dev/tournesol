@@ -80,7 +80,8 @@ final class MusicPlayerSource: LocalPlayer {
         case .previous: player.currentPlaybackTime > 3 ? player.skipToBeginning() : player.skipToPreviousItem()
         case .seek(let position): player.currentPlaybackTime = position
         case .setVolume(let value): volume.set(value)
-        case .loadTrack(let track, let position): load(track, at: position)
+        case .loadTrack(let track, let position, let upcoming): load(track, at: position, upcoming: upcoming)
+        case .enqueue(let track, let next): enqueue(track, next: next)
         case .startLoaded(let position): startLoaded(at: position)
         case .handOff: player.pause()
         case .release: release()
@@ -147,20 +148,71 @@ final class MusicPlayerSource: LocalPlayer {
         return nil
     }
 
-    private func load(_ track: TrackReference, at position: TimeInterval) {
+    func upcomingTracks() async -> [TrackReference] {
+        let countSelector = NSSelectorFromString("numberOfItems")
+        let itemSelector = NSSelectorFromString("nowPlayingItemAtIndex:")
+        guard player.responds(to: countSelector), player.responds(to: itemSelector) else { return [] }
+        typealias Count = @convention(c) (AnyObject, Selector) -> UInt
+        typealias Item = @convention(c) (AnyObject, Selector, UInt) -> MPMediaItem?
+        let count = unsafeBitCast(player.method(for: countSelector), to: Count.self)(player, countSelector)
+        let itemAt = unsafeBitCast(player.method(for: itemSelector), to: Item.self)
+        let current = UInt(player.indexOfNowPlayingItem)
+        guard current != UInt(NSNotFound), count > current + 1 else { return [] }
+        return (current + 1..<min(count, current + 26)).compactMap { index in
+            guard let item = itemAt(player, itemSelector, index) else { return nil }
+            let storeID = item.playbackStoreID
+            return TrackReference(catalogID: storeID.isEmpty || storeID == "0" ? nil : storeID, title: item.title, artist: item.artist, album: item.albumTitle, duration: item.playbackDuration)
+        }
+    }
+
+    private func enqueue(_ track: TrackReference, next: Bool) {
+        Task {
+            guard let id = await catalogID(for: track), id.allSatisfy(\.isNumber) else { return }
+            let descriptor = MPMusicPlayerStoreQueueDescriptor(storeIDs: [id])
+            if player.nowPlayingItem == nil {
+                player.setQueue(with: descriptor)
+                player.play()
+            } else if next {
+                player.prepend(descriptor)
+            } else {
+                player.append(descriptor)
+            }
+            refresh()
+        }
+    }
+
+    private func catalogIDs(for tracks: [TrackReference]) async -> [String] {
+        await withTaskGroup(of: (Int, String?).self) { group in
+            for (index, track) in tracks.enumerated() {
+                group.addTask {
+                    if let id = track.catalogID, id.allSatisfy(\.isNumber) { return (index, id) }
+                    return (index, await CatalogLookup.resolve(track, needsArtwork: false).catalogID)
+                }
+            }
+            var found: [Int: String] = [:]
+            for await (index, id) in group { found[index] = id }
+            return tracks.indices.compactMap { found[$0] }
+        }
+    }
+
+    private func load(_ track: TrackReference, at position: TimeInterval, upcoming: [TrackReference]) {
         loadedSignature = nil
         loading?.cancel()
         loading = Task {
             var located = prepared[track.signature]
-            log.debug("load \(track.title ?? "?", privacy: .public) prepared=\(located != nil)")
+            log.debug("load \(track.title ?? "?", privacy: .public) prepared=\(located != nil) upcoming=\(upcoming.count)")
             if located == nil { located = await locate(track) }
             guard let located, !Task.isCancelled else {
                 log.error("no match found")
                 return false
             }
             switch located {
-            case .library(let item): player.setQueue(with: MPMediaItemCollection(items: [item]))
-            case .catalog(let id): player.setQueue(with: MPMusicPlayerStoreQueueDescriptor(storeIDs: [id]))
+            case .library(let item):
+                let rest = upcoming.compactMap { libraryItem(matching: $0, threshold: TrackMatcher.acceptable, requireAlbum: false) }
+                player.setQueue(with: MPMediaItemCollection(items: [item] + rest))
+            case .catalog(let id):
+                let rest = await catalogIDs(for: upcoming)
+                player.setQueue(with: MPMusicPlayerStoreQueueDescriptor(storeIDs: [id] + rest))
             }
             try? await player.prepareToPlay()
             player.currentPlaybackTime = position

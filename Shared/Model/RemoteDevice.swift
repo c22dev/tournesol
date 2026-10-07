@@ -127,7 +127,7 @@ final class RemoteDevice: Identifiable {
         case .togglePlayPause: next.isPlaying.toggle()
         case .seek(let position): next.elapsed = position
         case .setVolume: return
-        case .loadTrack(let track, let position):
+        case .loadTrack(let track, let position, _):
             next.title = track.title
             next.artist = track.artist
             next.album = track.album
@@ -141,7 +141,7 @@ final class RemoteDevice: Identifiable {
             next.isPlaying = false
         case .release:
             next = PlaybackState(volume: state.volume, output: state.output)
-        case .next, .previous: return
+        case .next, .previous, .enqueue: return
         }
         withAnimation(.snappy) { state = next }
     }
