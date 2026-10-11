@@ -29,6 +29,10 @@ final class VolumeButtonForwarder {
         self.store = store
         self.onFocusChange = onFocusChange
         volume.onButtonPress = { [weak self] steps in self?.forward(steps) ?? false }
+        volume.onRouteChange = { [weak self] in
+            guard let self, mode != .off else { return }
+            pin()
+        }
 
         let transitions: [(Notification.Name, Bool)] = [
             (UIApplication.didBecomeActiveNotification, true),
