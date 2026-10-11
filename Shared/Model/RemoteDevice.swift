@@ -27,6 +27,12 @@ final class RemoteDevice: Identifiable {
 
     @ObservationIgnored var onCommand: (Command) -> Void = { _ in }
     @ObservationIgnored var onRefresh: () -> Void = {}
+    @ObservationIgnored var onFetchQueue: () async -> [TrackReference] = { [] }
+
+    /// What plays after the current track. Only Macs keep an editable queue.
+    func upcomingTracks() async -> [TrackReference] { await onFetchQueue() }
+
+    var hasEditableQueue: Bool { info.kind == .mac || info.kind == .macBook }
 
     init(info: DeviceInfo, isLocal: Bool) {
         id = info.id
@@ -141,7 +147,7 @@ final class RemoteDevice: Identifiable {
             next.isPlaying = false
         case .release:
             next = PlaybackState(volume: state.volume, output: state.output)
-        case .next, .previous, .enqueue: return
+        case .next, .previous, .enqueue, .enqueueAll, .setQueue: return
         }
         withAnimation(.snappy) { state = next }
     }

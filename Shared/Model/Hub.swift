@@ -111,6 +111,7 @@ final class Hub {
         local = RemoteDevice(info: info, isLocal: true)
         local.onCommand = { [player] in player.perform($0) }
         local.onRefresh = { [player] in player.refresh() }
+        local.onFetchQueue = { [player] in await player.upcomingTracks() }
         store.devices = [local]
         store.autoSelect(local.id)
         store.onPair = { [weak self] in self?.pair(with: $0) }
@@ -282,7 +283,7 @@ final class Hub {
         }
     }
 
-    private func upcomingTracks(of device: RemoteDevice) async -> [TrackReference] {
+    func upcomingTracks(of device: RemoteDevice) async -> [TrackReference] {
         if device.isLocal { return await player.upcomingTracks() }
         let link = activeLink(for: device.id)
         guard let link else { return [] }
@@ -534,6 +535,10 @@ final class Hub {
         device.isConnected = true
         device.onCommand = { [weak self] in self?.sendSecure(.command($0), toDevice: info.id) }
         device.onRefresh = { [weak self] in self?.sendSecure(.requestState, toDevice: info.id) }
+        device.onFetchQueue = { [weak self, weak device] in
+            guard let self, let device else { return [] }
+            return await self.upcomingTracks(of: device)
+        }
 
         if owners[link] == nil {
             owners[link] = device

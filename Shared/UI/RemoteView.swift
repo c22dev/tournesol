@@ -29,6 +29,7 @@ struct RemoteView: View {
                     HStack(alignment: .center, spacing: 14) {
                         TrackInfoView(state: device.state)
                         SearchButton(device: device)
+                        QueueButton(device: device)
                         TransferButton(device: device)
                     }
                     ScrubberView(state: device.state) { device.send(.seek($0)) }

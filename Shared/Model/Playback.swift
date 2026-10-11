@@ -124,6 +124,8 @@ nonisolated enum Command: Codable, Sendable {
     case setVolume(Double)
     case loadTrack(TrackReference, at: TimeInterval, upcoming: [TrackReference])
     case enqueue(TrackReference, next: Bool)
+    case enqueueAll([TrackReference], next: Bool)
+    case setQueue([TrackReference])
     case startLoaded(at: TimeInterval)
     case handOff
     case release

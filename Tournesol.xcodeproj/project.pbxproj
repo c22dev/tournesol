@@ -14,8 +14,11 @@
 		0D46705E228B8D6565B719D1 /* RemoteActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F8AC8E51C33745DF3B72BC6 /* RemoteActivityAttributes.swift */; };
 		177FFB9B7A7C9D7EFA0CB763 /* VolumeButtonForwarder.swift in Sources */ = {isa = PBXBuildFile; fileRef = D648C5193E6FA688120F819A /* VolumeButtonForwarder.swift */; };
 		197D681773B333CE9ED713B5 /* CatalogLookup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63707EC349C4A069A0796ACD /* CatalogLookup.swift */; };
+		0C33AD5EBE42CA0A28989E7E /* TrackMatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5283EFFAB47B31E248D66C7 /* TrackMatcher.swift */; };
+		3F6E02B8A1D749C5E8B07D13 /* NativeQueue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A41C9D05E3B28F16D0A94C2 /* NativeQueue.swift */; };
 		1DA00A494508DCA0EEB79142 /* BLECentral.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F9D223AA5353292773B1A00 /* BLECentral.swift */; };
 		242A04C7D585C88BC4F78868 /* CatalogLookup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63707EC349C4A069A0796ACD /* CatalogLookup.swift */; };
+		1E6521F3855A4054F6E366A4 /* TrackMatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5283EFFAB47B31E248D66C7 /* TrackMatcher.swift */; };
 		25DB43AE144D28BD44F3AD73 /* BLEPeripheral.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D411DF55E3C80556EE98966 /* BLEPeripheral.swift */; };
 		282D86D95F1AF615B95C7962 /* PlayerComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E5BD5191E622B5BB09DB126 /* PlayerComponents.swift */; };
 		2914B9BDAEFEBD200A15418A /* PushRelay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 627C915D80610D1897DC9928 /* PushRelay.swift */; };
@@ -26,6 +29,7 @@
 		319C4C0703DE020FAAF90D5E /* PlaybackControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9987BFF4AB17D33532710ED9 /* PlaybackControls.swift */; };
 		333BDAD11940679473320E2B /* PlayerComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E5BD5191E622B5BB09DB126 /* PlayerComponents.swift */; };
 		37BDB2F34A70DEC05467EDD0 /* SearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C861D78A664B64DE142A13 /* SearchView.swift */; };
+		01A1F09E36E6C147840C7854 /* QueueView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 339714A5B22B28C09F105FC8 /* QueueView.swift */; };
 		39B8F731267DE3B158590406 /* ControlSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0ADA54E4E1F68701DE7CEA9 /* ControlSnapshot.swift */; };
 		3E0916C813EE0770FFF4F0BA /* RGB.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E8E9A2454111B642E1A5DB6 /* RGB.swift */; };
 		3F7F043F54EDEF274E818E64 /* MusicPlayerSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7A929D2BDB410CD8ACA1006 /* MusicPlayerSource.swift */; };
@@ -58,6 +62,7 @@
 		A1C0A9B7AF86CD5DB6430763 /* DeviceViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5816F47D10D42C6C7229C9C /* DeviceViews.swift */; };
 		A5C012F4EF5B3D14DAEC33D5 /* RemoteLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16BE2E78B20D3AF48A8F0405 /* RemoteLiveActivity.swift */; };
 		A9D4B75DA9699178FD29D238 /* SearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C861D78A664B64DE142A13 /* SearchView.swift */; };
+		D02238C1B8DFCFA283F36CB7 /* QueueView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 339714A5B22B28C09F105FC8 /* QueueView.swift */; };
 		ADC8EEEE7A30EE58677D70C2 /* RGB.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E8E9A2454111B642E1A5DB6 /* RGB.swift */; };
 		AE86DF97E35441339F95B6FF /* RemoteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59BE048F58405520F3432C10 /* RemoteView.swift */; };
 		B4195D6B90BBBA318609494B /* RemoteActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F8AC8E51C33745DF3B72BC6 /* RemoteActivityAttributes.swift */; };
@@ -116,9 +121,12 @@
 		3A144ED770A7FEA037D57C5F /* MediaKeys.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaKeys.swift; sourceTree = "<group>"; };
 		3E8FB0BEB377A375CD2A7141 /* SilentAudio.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SilentAudio.swift; sourceTree = "<group>"; };
 		3EDA322588C345054EDB18AB /* Base.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; path = Base.xcconfig; sourceTree = "<group>"; };
+		339714A5B22B28C09F105FC8 /* QueueView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QueueView.swift; sourceTree = "<group>"; };
 		50C861D78A664B64DE142A13 /* SearchView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SearchView.swift; sourceTree = "<group>"; };
 		59BE048F58405520F3432C10 /* RemoteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteView.swift; sourceTree = "<group>"; };
 		627C915D80610D1897DC9928 /* PushRelay.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PushRelay.swift; sourceTree = "<group>"; };
+		F5283EFFAB47B31E248D66C7 /* TrackMatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrackMatcher.swift; sourceTree = "<group>"; };
+		7A41C9D05E3B28F16D0A94C2 /* NativeQueue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeQueue.swift; sourceTree = "<group>"; };
 		63707EC349C4A069A0796ACD /* CatalogLookup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatalogLookup.swift; sourceTree = "<group>"; };
 		6969AC7744E8E78D111EAE70 /* TournesolWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = TournesolWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		6B9FCB47331B2149F0ECABD9 /* ArtworkStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArtworkStore.swift; sourceTree = "<group>"; };
@@ -174,6 +182,8 @@
 			isa = PBXGroup;
 			children = (
 				63707EC349C4A069A0796ACD /* CatalogLookup.swift */,
+				F5283EFFAB47B31E248D66C7 /* TrackMatcher.swift */,
+				7A41C9D05E3B28F16D0A94C2 /* NativeQueue.swift */,
 				FEAD02C390052A15159B8C73 /* PlatformImage.swift */,
 				627C915D80610D1897DC9928 /* PushRelay.swift */,
 			);
@@ -314,6 +324,7 @@
 				196A1553EDDA8EA3278A63FD /* Previews.swift */,
 				59BE048F58405520F3432C10 /* RemoteView.swift */,
 				50C861D78A664B64DE142A13 /* SearchView.swift */,
+				339714A5B22B28C09F105FC8 /* QueueView.swift */,
 			);
 			path = UI;
 			sourceTree = "<group>";
@@ -444,6 +455,8 @@
 				0AAC5F1A0B4D5568FC212CA5 /* BLEPeripheral.swift in Sources */,
 				C02C4554643632746E622B70 /* Bluetooth.swift in Sources */,
 				242A04C7D585C88BC4F78868 /* CatalogLookup.swift in Sources */,
+				1E6521F3855A4054F6E366A4 /* TrackMatcher.swift in Sources */,
+				3F6E02B8A1D749C5E8B07D13 /* NativeQueue.swift in Sources */,
 				2DDC8F64F893B71C5A77D0D0 /* CompositeTransport.swift in Sources */,
 				014B2A06C26D9E04223BE072 /* DeviceViews.swift in Sources */,
 				C87D298C57B239A70422FB5F /* Hub.swift in Sources */,
@@ -466,6 +479,7 @@
 				04E27525CBA9BFD1CBD6223D /* PushRelay.swift in Sources */,
 				86D70F22759BD48D628A0072 /* NowPlayingBridge.swift in Sources */,
 				A9D4B75DA9699178FD29D238 /* SearchView.swift in Sources */,
+				D02238C1B8DFCFA283F36CB7 /* QueueView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -493,6 +507,7 @@
 				25DB43AE144D28BD44F3AD73 /* BLEPeripheral.swift in Sources */,
 				8AC792A93DF95CE942CE0305 /* Bluetooth.swift in Sources */,
 				197D681773B333CE9ED713B5 /* CatalogLookup.swift in Sources */,
+				0C33AD5EBE42CA0A28989E7E /* TrackMatcher.swift in Sources */,
 				867F5A5625EFFBA96441A5E0 /* CompositeTransport.swift in Sources */,
 				A1C0A9B7AF86CD5DB6430763 /* DeviceViews.swift in Sources */,
 				7A7660ED520F75E00C60DE0C /* Hub.swift in Sources */,
@@ -520,6 +535,7 @@
 				5725E4C656131206E6223BD0 /* NowPlayingBridge.swift in Sources */,
 				ECFEEFA89D7790CFBACAC10F /* SilentAudio.swift in Sources */,
 				37BDB2F34A70DEC05467EDD0 /* SearchView.swift in Sources */,
+				01A1F09E36E6C147840C7854 /* QueueView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
