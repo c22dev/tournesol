@@ -17,6 +17,9 @@ final class NowPlayingBridge {
 
     static var isEnabled: Bool { UserDefaults.standard.bool(forKey: enabledKey) }
 
+    /// Unset counts as on, like the toggle in Settings.
+    static var keepAirPodsFree: Bool { UserDefaults.standard.object(forKey: keepAirPodsFreeKey) as? Bool ?? true }
+
     private let store: DeviceStore
     private var mirrored: RemoteDevice?
     private var commandTargets: [(MPRemoteCommand, Any)] = []
@@ -63,7 +66,7 @@ final class NowPlayingBridge {
 
         #if os(iOS)
         if device.state.isPlaying {
-            if silence.start(keepAirPodsFree: UserDefaults.standard.bool(forKey: Self.keepAirPodsFreeKey)) {
+            if silence.start(keepAirPodsFree: Self.keepAirPodsFree) {
                 Task { [weak self] in
                     try? await Task.sleep(for: .milliseconds(600))
                     if let device = self?.mirrored { self?.publish(device) }

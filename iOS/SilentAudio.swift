@@ -15,6 +15,7 @@ nonisolated final class AudioSessionQueue: @unchecked Sendable {
     static let shared = AudioSessionQueue()
     private let queue = DispatchQueue(label: "ch.cclerc.Tournesol.audio-session", qos: .userInitiated)
     private var player: AVAudioPlayer?
+    private var routeObserver: NSObjectProtocol?
 
     func setActive(_ active: Bool) {
         queue.async {
@@ -49,6 +50,8 @@ nonisolated final class AudioSessionQueue: @unchecked Sendable {
                 log.error("audio session failed: \(error.localizedDescription, privacy: .public)")
                 return
             }
+            if keepAirPodsFree { keepOnSpeaker() }
+            watchRoute(keepOnSpeaker: keepAirPodsFree)
             if player == nil {
                 player = try? AVAudioPlayer(data: data)
                 player?.numberOfLoops = -1
@@ -66,8 +69,28 @@ nonisolated final class AudioSessionQueue: @unchecked Sendable {
         }
     }
 
+    /// Silence reaching AirPods pulls them off whatever else they're playing.
+    private func keepOnSpeaker() {
+        let session = AVAudioSession.sharedInstance()
+        let outputs = session.currentRoute.outputs
+        if outputs.contains(where: { $0.portType != .builtInSpeaker }) {
+            try? session.overrideOutputAudioPort(.speaker)
+            log.debug("moved silence to the speaker from \(outputs.map(\.portType.rawValue).joined(separator: ", "), privacy: .public)")
+        }
+    }
+
+    private func watchRoute(keepOnSpeaker keep: Bool) {
+        if let routeObserver { NotificationCenter.default.removeObserver(routeObserver) }
+        routeObserver = nil
+        guard keep else { return }
+        routeObserver = NotificationCenter.default.addObserver(forName: AVAudioSession.routeChangeNotification, object: nil, queue: nil) { [weak self] _ in
+            self?.queue.async { self?.keepOnSpeaker() }
+        }
+    }
+
     func stopSilence(deactivate: Bool) {
         queue.async { [self] in
+            watchRoute(keepOnSpeaker: false)
             player?.stop()
             let session = AVAudioSession.sharedInstance()
             try? session.setCategory(.ambient, options: .mixWithOthers)
