@@ -66,6 +66,62 @@ nonisolated struct AudioOutput: Codable, Equatable, Sendable {
     }
 }
 
+nonisolated enum RepeatMode: String, Codable, CaseIterable, Sendable {
+    case off, all, one
+
+    var next: RepeatMode {
+        switch self {
+        case .off: .all
+        case .all: .one
+        case .one: .off
+        }
+    }
+}
+
+/// An AirPlay output Music can play to, which isn't necessarily running Tournesol.
+nonisolated struct AirPlayDevice: Codable, Equatable, Identifiable, Sendable {
+    enum Kind: String, Codable, Sendable {
+        case computer, appleTV, homePod, airPortExpress, bluetooth, speaker, other
+    }
+
+    var name: String
+    var kind: Kind
+    var isSelected: Bool
+    /// What a selection refers to. Outputs can share a name, so the iPhone uses its routes' ids; Music uses names.
+    var id: String
+
+    var symbol: String {
+        switch kind {
+        case .computer: "desktopcomputer"
+        case .appleTV: "appletv.fill"
+        case .homePod: "homepod.fill"
+        case .airPortExpress: "wifi.router.fill"
+        case .bluetooth: "hifispeaker.fill"
+        case .speaker: "speaker.wave.2.fill"
+        case .other: "airplay.audio"
+        }
+    }
+
+    init(name: String, kind: Kind, isSelected: Bool, id: String? = nil) {
+        self.name = name
+        self.kind = kind
+        self.isSelected = isSelected
+        self.id = id ?? name
+    }
+
+    init(name: String, kindName: String, isSelected: Bool) {
+        let kind: Kind = switch kindName.lowercased() {
+        case "computer": .computer
+        case "apple tv": .appleTV
+        case "homepod": .homePod
+        case "airport express": .airPortExpress
+        case "bluetooth device": .bluetooth
+        default: .other
+        }
+        self.init(name: name, kind: kind, isSelected: isSelected)
+    }
+}
+
 nonisolated struct PlaybackState: Codable, Equatable, Sendable {
     var title: String?
     var artist: String?
@@ -79,6 +135,10 @@ nonisolated struct PlaybackState: Codable, Equatable, Sendable {
     var artworkID: String?
     var catalogID: String?
     var loadedSignature: String?
+    var shuffle: Bool?
+    var repeatMode: RepeatMode?
+    var isLiked: Bool?
+    var airPlay: [AirPlayDevice]?
 
     static let idle = PlaybackState()
 
@@ -126,6 +186,10 @@ nonisolated enum Command: Codable, Sendable {
     case enqueue(TrackReference, next: Bool)
     case enqueueAll([TrackReference], next: Bool)
     case setQueue([TrackReference])
+    case setShuffle(Bool)
+    case setRepeat(RepeatMode)
+    case setLiked(Bool)
+    case setAirPlay([String])
     case startLoaded(at: TimeInterval)
     case handOff
     case release

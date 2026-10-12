@@ -48,6 +48,7 @@ final class MusicAppSource: LocalPlayer {
                 try? await Task.sleep(for: .seconds(3))
                 await self?.pollMusicIfNeeded()
                 await self?.refreshPlaylistQueue()
+                await self?.refreshSettings()
             }
         }
         advanceTask = Task { [weak self] in
@@ -82,6 +83,7 @@ final class MusicAppSource: LocalPlayer {
             if position < 1, isUsable(.edit), let id = queuedItemID(of: track, followedBy: upcoming) {
                 loading?.cancel()
                 loaded = nil
+                pendingUpcoming = []
                 serialized { [self] in
                     let worked = await attemptNative(.edit, send: {
                         script.editQueue([.play(id)])
@@ -97,7 +99,8 @@ final class MusicAppSource: LocalPlayer {
                 }
                 break
             }
-            queue = upcoming
+            queue = []
+            pendingUpcoming = upcoming
             stopAfterCurrent = false
             advancedFrom = nil
             load(track)
@@ -118,6 +121,12 @@ final class MusicAppSource: LocalPlayer {
                 queue = tracks
                 stopAfterCurrent = tracks.isEmpty
             }
+        case .setShuffle(let on): setSetting("set shuffle enabled to \(on)")
+        case .setRepeat(let mode): setSetting("set song repeat to \(mode.rawValue)")
+        case .setLiked(let liked): setSetting("set favorited of current track to \(liked)")
+        case .setAirPlay(let names):
+            let devices = names.map { "AirPlay device \(Self.quoted($0))" }.joined(separator: ", ")
+            if !names.isEmpty { setSetting("set current AirPlay devices to {\(devices)}") }
         case .startLoaded(let position): startLoaded(at: position)
         case .handOff: fadeOutAndPause()
         case .release:
@@ -192,6 +201,10 @@ final class MusicAppSource: LocalPlayer {
         }
 
         next.loadedSignature = loaded?.track.signature
+        next.shuffle = settings.shuffle
+        next.repeatMode = settings.repeatMode
+        next.isLiked = next.hasTrack ? settings.isLiked : nil
+        next.airPlay = settings.airPlay
         state = next
         onChange?()
     }
@@ -311,6 +324,74 @@ final class MusicAppSource: LocalPlayer {
     }
 
     private var systemQueue: [TrackReference] { systemUpcoming.slots.map(\.track) }
+
+    private struct Settings: Equatable {
+        var shuffle: Bool?
+        var repeatMode: RepeatMode?
+        var isLiked: Bool?
+        var airPlay: [AirPlayDevice]?
+    }
+
+    private var settings = Settings()
+
+    private func setSetting(_ command: String) {
+        script.send(command)
+        Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(400))
+            await self?.refreshSettings()
+        }
+    }
+
+    /// Music can list one device twice, as an AirPlay target and as a Bluetooth one. Keep the selected or the AirPlay entry.
+    private nonisolated static func unique(_ devices: [AirPlayDevice]) -> [AirPlayDevice] {
+        func rank(_ device: AirPlayDevice) -> Int { device.isSelected ? 3 : device.kind == .bluetooth ? 1 : 2 }
+        var best: [String: AirPlayDevice] = [:]
+        var order: [String] = []
+        for device in devices {
+            if let existing = best[device.name] {
+                if rank(device) > rank(existing) { best[device.name] = device }
+            } else {
+                best[device.name] = device
+                order.append(device.name)
+            }
+        }
+        return order.compactMap { best[$0] }
+    }
+
+    private func refreshSettings() async {
+        guard NSRunningApplication.runningApplications(withBundleIdentifier: "com.apple.Music").first != nil else { return }
+        let source = """
+            tell application "Music"
+                set liked to false
+                try
+                    set liked to favorited of current track
+                end try
+                set devices to {}
+                repeat with d in AirPlay devices
+                    if available of d then set end of devices to {name of d, (kind of d) as text, selected of d}
+                end repeat
+                return {shuffle enabled, (song repeat) as text, liked, devices}
+            end tell
+            """
+        let found = await script.run(source) { result -> Settings? in
+            guard result.numberOfItems >= 4 else { return nil }
+            let devices = result.atIndex(4).map { list in
+                Self.unique((list.numberOfItems > 0 ? Array(1...list.numberOfItems) : []).compactMap { index -> AirPlayDevice? in
+                    guard let entry = list.atIndex(index), entry.numberOfItems >= 3, let name = entry.atIndex(1)?.stringValue else { return nil }
+                    return AirPlayDevice(name: name, kindName: entry.atIndex(2)?.stringValue ?? "", isSelected: entry.atIndex(3)?.booleanValue ?? false)
+                })
+            }
+            return Settings(
+                shuffle: result.atIndex(1)?.booleanValue,
+                repeatMode: result.atIndex(2)?.stringValue.flatMap(RepeatMode.init(rawValue:)),
+                isLiked: result.atIndex(3)?.booleanValue,
+                airPlay: devices
+            )
+        }
+        guard let found, found != settings else { return }
+        settings = found
+        publish()
+    }
 
     private var playlistQueue: [TrackReference] = []
     private var playlistRetryAfter = ContinuousClock.now
@@ -479,6 +560,15 @@ final class MusicAppSource: LocalPlayer {
     /// Songs we queued that haven't played yet.
     private var pendingAdds: [TrackReference] = []
 
+    /// The queue that came with a handed-over song, added once the song is playing.
+    private var pendingUpcoming: [TrackReference] = []
+
+    private func queueHandedOver() {
+        let upcoming = pendingUpcoming
+        pendingUpcoming = []
+        if !upcoming.isEmpty { enqueue(upcoming, next: true) }
+    }
+
     private func emulateEnqueue(_ tracks: [TrackReference], next: Bool) {
         let isIdle = !state.isPlaying && loaded == nil && loading == nil
         if queue.isEmpty, !stopAfterCurrent { queue = systemQueue }
@@ -600,6 +690,7 @@ final class MusicAppSource: LocalPlayer {
                 return
             }
             loaded = nil
+            defer { queueHandedOver() }
 
             let volume = await musicVolume()
             script.send("set sound volume to 0")
@@ -736,10 +827,26 @@ extension MusicAppSource {
             report("reorder", "skipped: the queue is too short")
         }
 
-        perform(.loadTrack(second, at: 0, upcoming: []))
+        let sections = await BrowseLoader.sections()
+        report("browse", sections.isEmpty ? "nothing loaded (not authorized?)" : sections.map { "\($0.title) \($0.items.count)" }.joined(separator: ", "))
+        report("outputs", state.airPlay.map { $0.map { "\($0.name)\($0.isSelected ? "*" : "")" }.joined(separator: ", ") } ?? "none reported")
+
+        perform(.setShuffle(true))
+        try? await Task.sleep(for: .seconds(5))
+        report("shuffle", state.shuffle == true ? "ok" : "FAILED")
+        perform(.setShuffle(false))
+        perform(.setRepeat(.all))
+        try? await Task.sleep(for: .seconds(5))
+        report("repeat", state.repeatMode == .all ? "ok" : "FAILED")
+        perform(.setRepeat(.off))
+        try? await Task.sleep(for: .seconds(3))
+
+        perform(.loadTrack(second, at: 0, upcoming: [first]))
         perform(.startLoaded(at: 0))
         for _ in 0..<30 where !TrackMatcher.sameSong(state.title, second.title) { try? await Task.sleep(for: .milliseconds(500)) }
         report("start", TrackMatcher.sameSong(state.title, second.title) ? outcome(.start, held: true) : "FAILED")
+        await settle()
+        report("handoff queue", outcome(.insert, held: QueuePlanner.holds(first, at: 0, in: systemUpcoming.slots)))
 
         try? await Task.sleep(for: .seconds(5))
         script.send("pause")

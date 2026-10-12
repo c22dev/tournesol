@@ -22,6 +22,7 @@ final class RemoteDevice: Identifiable {
     @ObservationIgnored private(set) var reportedState = PlaybackState.idle
     @ObservationIgnored private var playbackExpectation: (title: String?, expires: ContinuousClock.Instant)?
     @ObservationIgnored private var volumeIntent: (value: Double, expires: ContinuousClock.Instant)?
+    @ObservationIgnored private var settingIntents: [String: (apply: (inout PlaybackState) -> Void, holds: (PlaybackState) -> Bool, expires: ContinuousClock.Instant)] = [:]
     @ObservationIgnored private var queuedVolume: Double?
     @ObservationIgnored private var volumeSender: Task<Void, Never>?
 
@@ -29,10 +30,10 @@ final class RemoteDevice: Identifiable {
     @ObservationIgnored var onRefresh: () -> Void = {}
     @ObservationIgnored var onFetchQueue: () async -> [TrackReference] = { [] }
 
-    /// What plays after the current track. Only Macs keep an editable queue.
     func upcomingTracks() async -> [TrackReference] { await onFetchQueue() }
 
-    var hasEditableQueue: Bool { info.kind == .mac || info.kind == .macBook }
+    /// What plays after the current track. Macs and iPhones both keep an editable queue.
+    var hasEditableQueue: Bool { true }
 
     init(info: DeviceInfo, isLocal: Bool) {
         id = info.id
@@ -99,6 +100,14 @@ final class RemoteDevice: Identifiable {
                 incoming.output = held.output
             }
         }
+        // A changed setting shows at once; the device's older report must not flip it back before the change lands.
+        for (key, intent) in settingIntents {
+            if ContinuousClock.now > intent.expires || intent.holds(incoming) {
+                settingIntents[key] = nil
+            } else {
+                intent.apply(&incoming)
+            }
+        }
         if let intent = volumeIntent {
             if ContinuousClock.now > intent.expires || abs((incoming.volume ?? -1) - intent.value) < 0.02 {
                 volumeIntent = nil
@@ -120,6 +129,10 @@ final class RemoteDevice: Identifiable {
             artwork = image
             tint = image?.averageRGB()?.normalized()
         }
+    }
+
+    private func hold(_ key: String, _ apply: @escaping (inout PlaybackState) -> Void, _ holds: @escaping (PlaybackState) -> Bool) {
+        settingIntents[key] = (apply, holds, .now + .seconds(3))
     }
 
     private func apply(_ command: Command) {
@@ -147,6 +160,21 @@ final class RemoteDevice: Identifiable {
             next.isPlaying = false
         case .release:
             next = PlaybackState(volume: state.volume, output: state.output)
+        case .setShuffle(let on):
+            hold("shuffle", { $0.shuffle = on }, { $0.shuffle == on })
+            next.shuffle = on
+        case .setRepeat(let mode):
+            hold("repeat", { $0.repeatMode = mode }, { $0.repeatMode == mode })
+            next.repeatMode = mode
+        case .setLiked(let liked):
+            hold("liked", { $0.isLiked = liked }, { $0.isLiked == liked })
+            next.isLiked = liked
+        case .setAirPlay(let ids):
+            let selection = { (state: inout PlaybackState) in
+                state.airPlay = state.airPlay?.map { AirPlayDevice(name: $0.name, kind: $0.kind, isSelected: ids.contains($0.id), id: $0.id) }
+            }
+            hold("airplay", selection, { Set($0.airPlay?.filter(\.isSelected).map(\.id) ?? []) == Set(ids) })
+            selection(&next)
         case .next, .previous, .enqueue, .enqueueAll, .setQueue: return
         }
         withAnimation(.snappy) { state = next }
@@ -172,7 +200,6 @@ final class PairingPrompt: Identifiable {
         self.deviceSymbol = deviceSymbol
     }
 }
-
 @Observable
 final class TransferStatus {
     enum Phase {

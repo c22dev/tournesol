@@ -23,6 +23,8 @@ final class MusicPlayerSource: LocalPlayer {
     private var observers: [NSObjectProtocol] = []
     private var resolvedKeys: Set<String> = []
     private var catalogIDs: [String: String] = [:]
+    /// Queued songs the controller removed. The system player can't drop one, so each is jumped over when it comes up.
+    private var skipped: [String] = []
 
     init() {
         player.beginGeneratingPlaybackNotifications()
@@ -47,6 +49,14 @@ final class MusicPlayerSource: LocalPlayer {
     }
 
     func refresh() {
+        if let item = player.nowPlayingItem, !skipped.isEmpty {
+            let signature = TrackReference(catalogID: nil, title: item.title, artist: item.artist, album: item.albumTitle, duration: 0).signature
+            if let index = skipped.firstIndex(of: signature) {
+                skipped.remove(at: index)
+                player.skipToNextItem()
+                return
+            }
+        }
         volume.poll()
         var next = PlaybackState()
         next.volume = volume.current
@@ -66,6 +76,12 @@ final class MusicPlayerSource: LocalPlayer {
             next.artworkID = artwork?.id == key ? key : nil
         }
         next.loadedSignature = loadedSignature
+        next.shuffle = player.shuffleMode != .off && player.shuffleMode != .default
+        next.repeatMode = switch player.repeatMode {
+        case .one: .one
+        case .all: .all
+        default: .off
+        }
 
         state = next
         onChange?()
@@ -83,7 +99,14 @@ final class MusicPlayerSource: LocalPlayer {
         case .loadTrack(let track, let position, let upcoming): load(track, at: position, upcoming: upcoming)
         case .enqueue(let track, let next): enqueue([track], next: next)
         case .enqueueAll(let tracks, let next): enqueue(tracks, next: next)
-        case .setQueue: break
+        case .setQueue(let tracks): rebuildQueue(upcoming: tracks)
+        case .setShuffle(let on): player.shuffleMode = on ? .songs : .off
+        case .setRepeat(let mode): player.repeatMode = switch mode {
+        case .off: .none
+        case .all: .all
+        case .one: .one
+        }
+        case .setLiked, .setAirPlay: break
         case .startLoaded(let position): startLoaded(at: position)
         case .handOff: player.pause()
         case .release: release()
@@ -151,6 +174,15 @@ final class MusicPlayerSource: LocalPlayer {
     }
 
     func upcomingTracks() async -> [TrackReference] {
+        var pending = skipped
+        return queuedTracks().filter { track in
+            guard let index = pending.firstIndex(of: track.signature) else { return true }
+            pending.remove(at: index)
+            return false
+        }
+    }
+
+    private func queuedTracks() -> [TrackReference] {
         let countSelector = NSSelectorFromString("numberOfItems")
         let itemSelector = NSSelectorFromString("nowPlayingItemAtIndex:")
         guard player.responds(to: countSelector), player.responds(to: itemSelector) else { return [] }
@@ -184,6 +216,35 @@ final class MusicPlayerSource: LocalPlayer {
         }
     }
 
+    /// The signatures dropped when `target` is `existing` with some songs taken out, or nil if the order changed or something was added.
+    private static func removals(from existing: [TrackReference], to target: [TrackReference]) -> [String]? {
+        var kept = 0
+        var removed: [String] = []
+        for track in existing {
+            if kept < target.count, track.signature == target[kept].signature { kept += 1 } else { removed.append(track.signature) }
+        }
+        return kept == target.count ? removed : nil
+    }
+
+    /// Reordering or adding needs a rebuild: the queue is replaced around the current song and position.
+    private func rebuildQueue(upcoming tracks: [TrackReference]) {
+        guard state.hasTrack else { return }
+        let current = state.track
+        let position = state.elapsed(at: .now)
+        let wasPlaying = state.isPlaying
+        Task {
+            let existing = await upcomingTracks()
+            guard existing.map(\.signature) != tracks.map(\.signature) else { return }
+            if !tracks.isEmpty, let removed = Self.removals(from: existing, to: tracks) {
+                skipped += removed
+                return
+            }
+            skipped = []
+            load(current, at: position, upcoming: tracks)
+            if wasPlaying { startLoaded(at: position) }
+        }
+    }
+
     private func catalogIDs(for tracks: [TrackReference]) async -> [String] {
         await withTaskGroup(of: (Int, String?).self) { group in
             for (index, track) in tracks.enumerated() {
@@ -199,6 +260,7 @@ final class MusicPlayerSource: LocalPlayer {
     }
 
     private func load(_ track: TrackReference, at position: TimeInterval, upcoming: [TrackReference]) {
+        skipped = []
         loadedSignature = nil
         loading?.cancel()
         loading = Task {
@@ -248,6 +310,7 @@ final class MusicPlayerSource: LocalPlayer {
     }
 
     private func release() {
+        skipped = []
         player.stop()
         let empty = MPMediaQuery.songs()
         empty.addFilterPredicate(MPMediaPropertyPredicate(value: NSNumber(value: UInt64(0)), forProperty: MPMediaItemPropertyPersistentID))

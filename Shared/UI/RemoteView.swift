@@ -28,6 +28,7 @@ struct RemoteView: View {
                 VStack(spacing: isShort ? 12 : 20) {
                     HStack(alignment: .center, spacing: 14) {
                         TrackInfoView(state: device.state)
+                        LikeButton(device: device)
                         SearchButton(device: device)
                         QueueButton(device: device)
                         TransferButton(device: device)
@@ -35,6 +36,7 @@ struct RemoteView: View {
                     ScrubberView(state: device.state) { device.send(.seek($0)) }
                     TransportControls(device: device, scale: isShort ? 0.85 : 1)
                         .padding(.vertical, isShort ? 0 : 4)
+                    PlaybackOptions(device: device)
                     VolumeSlider(device: device)
                     OutputRouteLabel(device: device)
                         .padding(.top, isShort ? 0 : 2)
