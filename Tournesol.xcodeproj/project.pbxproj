@@ -22,6 +22,7 @@
 		25DB43AE144D28BD44F3AD73 /* BLEPeripheral.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D411DF55E3C80556EE98966 /* BLEPeripheral.swift */; };
 		282D86D95F1AF615B95C7962 /* PlayerComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E5BD5191E622B5BB09DB126 /* PlayerComponents.swift */; };
 		2914B9BDAEFEBD200A15418A /* PushRelay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 627C915D80610D1897DC9928 /* PushRelay.swift */; };
+		23B48A24F006B3A7E01860F6 /* LANTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC027D440B7D953AB0EE51E7 /* LANTransport.swift */; };
 		2DDC8F64F893B71C5A77D0D0 /* CompositeTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = E28EA3C157DC32B9E595AEA9 /* CompositeTransport.swift */; };
 		2F1A4A5E897CA574C61D365D /* TournesolMacApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7480B0B7E72ADA07961383E /* TournesolMacApp.swift */; };
 		2F7C74B4CB2A6E0FD3B10495 /* RemoteActionIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0E0A458324BE6DE6D9CDEC4 /* RemoteActionIntent.swift */; };
@@ -51,6 +52,7 @@
 		7A7660ED520F75E00C60DE0C /* Hub.swift in Sources */ = {isa = PBXBuildFile; fileRef = E82E7143C5E165F81FB99164 /* Hub.swift */; };
 		84A76CEE319B85A56C60CBE2 /* RemoteDevice.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6988A4C1CE3B07B8F9C2F3C /* RemoteDevice.swift */; };
 		84EE3404A74A84A6FE65C3BE /* MacRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 151095F9E9C2BD26F59EABCC /* MacRootView.swift */; };
+		01E935CE2B1519FAB566AD3B /* LANTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC027D440B7D953AB0EE51E7 /* LANTransport.swift */; };
 		867F5A5625EFFBA96441A5E0 /* CompositeTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = E28EA3C157DC32B9E595AEA9 /* CompositeTransport.swift */; };
 		86D70F22759BD48D628A0072 /* NowPlayingBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = F54211A1C1246C404605DEBD /* NowPlayingBridge.swift */; };
 		8AC792A93DF95CE942CE0305 /* Bluetooth.swift in Sources */ = {isa = PBXBuildFile; fileRef = E06F8FFE8E06055041BC689F /* Bluetooth.swift */; };
@@ -156,6 +158,7 @@
 		DDB4C576954BB06509CDC07E /* Tournesol.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Tournesol.entitlements; sourceTree = "<group>"; };
 		E06F8FFE8E06055041BC689F /* Bluetooth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Bluetooth.swift; sourceTree = "<group>"; };
 		E08F44EA73742FF8532326D4 /* ControlCenterSync.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ControlCenterSync.swift; sourceTree = "<group>"; };
+		FC027D440B7D953AB0EE51E7 /* LANTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LANTransport.swift; sourceTree = "<group>"; };
 		E28EA3C157DC32B9E595AEA9 /* CompositeTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompositeTransport.swift; sourceTree = "<group>"; };
 		E6023525E9545B35DBE90590 /* TournesolWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TournesolWidgets.swift; sourceTree = "<group>"; };
 		E7480B0B7E72ADA07961383E /* TournesolMacApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TournesolMacApp.swift; sourceTree = "<group>"; };
@@ -244,6 +247,7 @@
 				7D411DF55E3C80556EE98966 /* BLEPeripheral.swift */,
 				E06F8FFE8E06055041BC689F /* Bluetooth.swift */,
 				E28EA3C157DC32B9E595AEA9 /* CompositeTransport.swift */,
+				FC027D440B7D953AB0EE51E7 /* LANTransport.swift */,
 			);
 			path = Transport;
 			sourceTree = "<group>";
@@ -458,6 +462,7 @@
 				1E6521F3855A4054F6E366A4 /* TrackMatcher.swift in Sources */,
 				3F6E02B8A1D749C5E8B07D13 /* NativeQueue.swift in Sources */,
 				2DDC8F64F893B71C5A77D0D0 /* CompositeTransport.swift in Sources */,
+				23B48A24F006B3A7E01860F6 /* LANTransport.swift in Sources */,
 				014B2A06C26D9E04223BE072 /* DeviceViews.swift in Sources */,
 				C87D298C57B239A70422FB5F /* Hub.swift in Sources */,
 				84EE3404A74A84A6FE65C3BE /* MacRootView.swift in Sources */,
@@ -509,6 +514,7 @@
 				197D681773B333CE9ED713B5 /* CatalogLookup.swift in Sources */,
 				0C33AD5EBE42CA0A28989E7E /* TrackMatcher.swift in Sources */,
 				867F5A5625EFFBA96441A5E0 /* CompositeTransport.swift in Sources */,
+				01E935CE2B1519FAB566AD3B /* LANTransport.swift in Sources */,
 				A1C0A9B7AF86CD5DB6430763 /* DeviceViews.swift in Sources */,
 				7A7660ED520F75E00C60DE0C /* Hub.swift in Sources */,
 				B94DD6AFA89AB4F6FE0048C6 /* LiveActivityController.swift in Sources */,

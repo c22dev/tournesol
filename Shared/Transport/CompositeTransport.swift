@@ -57,6 +57,11 @@ final class CompositeTransport: MessageTransport {
         transports[key.transport].close(key.peer)
     }
 
+    func priority(of link: UUID) -> Int {
+        guard let key = keys[link] else { return 0 }
+        return transports[key.transport].priority(of: key.peer)
+    }
+
     func resumeAll() {
         transports.forEach { $0.resumeAll() }
     }

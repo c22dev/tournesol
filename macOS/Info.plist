@@ -34,5 +34,11 @@
 	<string>$(PUSH_RELAY_SECRET)</string>
 	<key>TournesolPushURL</key>
 	<string>$(PUSH_RELAY_URL)</string>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_tournesol._tcp</string>
+	</array>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Tournesol finds and talks to your other devices on the local network.</string>
 </dict>
 </plist>

@@ -183,7 +183,7 @@ final class AppModel {
 
     private init() {
         let info = DeviceInfo.current
-        let transport = CompositeTransport([BLEPeripheral(localName: info.name), BLECentral()])
+        let transport = CompositeTransport([BLEPeripheral(localName: info.name), BLECentral(), LANTransport(localID: info.id, activationNotifications: [NSApplication.didBecomeActiveNotification])])
         hub = Hub(info: info, player: MusicAppSource(), transport: transport, pollInterval: .seconds(15))
         mediaKeys = MediaKeyController(store: hub.store)
         nowPlaying = NowPlayingBridge(store: hub.store)

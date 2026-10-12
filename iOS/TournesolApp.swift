@@ -36,7 +36,7 @@ final class AppModel {
 
     private init() {
         let info = DeviceInfo.current
-        let transport = CompositeTransport([BLECentral(), BLEPeripheral(localName: info.name)])
+        let transport = CompositeTransport([BLECentral(), BLEPeripheral(localName: info.name), LANTransport(localID: info.id, activationNotifications: [UIApplication.didBecomeActiveNotification])])
         hub = Hub(info: info, player: MusicPlayerSource(), transport: transport)
         hub.onRemoteArtwork = { key, data in
             if let small = ArtworkEncoding.thumbnail(from: data, maxPixelSize: 200, quality: 0.75) {
