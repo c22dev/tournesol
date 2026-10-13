@@ -19,10 +19,12 @@ final class VolumeService {
     private(set) var current: Double
     var onChange: (() -> Void)?
     var onButtonPress: ((Int) -> Bool)?
+    var onRouteChange: (() -> Void)?
 
     private let session = AVAudioSession.sharedInstance()
     private let musicPlayer = MPMusicPlayerController.systemMusicPlayer
     private var lastReading: Float
+    private var lastRouteChange = ContinuousClock.now - .seconds(10)
     private var ownChanges: [(value: Float, expires: ContinuousClock.Instant)] = []
     private var observation: NSKeyValueObservation?
     private var observers: [NSObjectProtocol] = []
@@ -37,7 +39,10 @@ final class VolumeService {
             guard let value = change.newValue else { return }
             Task { @MainActor in self?.handle(reading: value) }
         }
-        observers = [UIApplication.didEnterBackgroundNotification, UIApplication.didBecomeActiveNotification].map { name in
+        observers.append(NotificationCenter.default.addObserver(forName: AVAudioSession.routeChangeNotification, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.routeChanged() }
+        })
+        observers += [UIApplication.didEnterBackgroundNotification, UIApplication.didBecomeActiveNotification].map { name in
             NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
                 MainActor.assumeIsolated {
                     if !SilentAudio.isRunning {
@@ -51,6 +56,16 @@ final class VolumeService {
 
     private func resync() {
         lastReading = read()
+    }
+
+    // each route has its own volume, so a route change isn't a button press
+    private func routeChanged() {
+        lastRouteChange = .now
+        lastReading = read()
+        Task { [weak self] in
+            try? await Task.sleep(for: .seconds(1))
+            self?.onRouteChange?()
+        }
     }
 
     func poll() {
@@ -67,6 +82,11 @@ final class VolumeService {
 
     private func handle(reading: Float) {
         guard abs(reading - lastReading) > 0.001 else { return }
+        if ContinuousClock.now - lastRouteChange < .seconds(2) {
+            lastReading = reading
+            current = Double(reading)
+            return
+        }
         let previous = lastReading
         lastReading = reading
 
