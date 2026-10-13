@@ -81,7 +81,9 @@ final class MusicPlayerSource: LocalPlayer {
         case .seek(let position): player.currentPlaybackTime = position
         case .setVolume(let value): volume.set(value)
         case .loadTrack(let track, let position, let upcoming): load(track, at: position, upcoming: upcoming)
-        case .enqueue(let track, let next): enqueue(track, next: next)
+        case .enqueue(let track, let next): enqueue([track], next: next)
+        case .enqueueAll(let tracks, let next): enqueue(tracks, next: next)
+        case .setQueue: break
         case .startLoaded(let position): startLoaded(at: position)
         case .handOff: player.pause()
         case .release: release()
@@ -165,10 +167,11 @@ final class MusicPlayerSource: LocalPlayer {
         }
     }
 
-    private func enqueue(_ track: TrackReference, next: Bool) {
+    private func enqueue(_ tracks: [TrackReference], next: Bool) {
         Task {
-            guard let id = await catalogID(for: track), id.allSatisfy(\.isNumber) else { return }
-            let descriptor = MPMusicPlayerStoreQueueDescriptor(storeIDs: [id])
+            let ids = await catalogIDs(for: tracks).filter { $0.allSatisfy(\.isNumber) }
+            guard !ids.isEmpty else { return }
+            let descriptor = MPMusicPlayerStoreQueueDescriptor(storeIDs: ids)
             if player.nowPlayingItem == nil {
                 player.setQueue(with: descriptor)
                 player.play()

@@ -8,6 +8,10 @@
 import MusicKit
 import SwiftUI
 
+extension Notification.Name {
+    static let showSearch = Notification.Name("ch.cclerc.Tournesol.showSearch")
+}
+
 struct SearchButton: View {
     let device: RemoteDevice
     @State private var isPresented = false
@@ -27,130 +31,492 @@ struct SearchButton: View {
         .opacity(device.isConnected ? 1 : 0.35)
         .help("Search Apple Music")
         .accessibilityLabel("Search")
+        .onReceive(NotificationCenter.default.publisher(for: .showSearch)) { _ in
+            if device.isConnected { isPresented = true }
+        }
         .sheet(isPresented: $isPresented) {
             SearchView(device: device)
         }
     }
 }
 
+// MARK: - Model
+
+private enum SearchDestination: Hashable {
+    case album(Album)
+    case artist(Artist)
+    case playlist(Playlist)
+}
+
+private struct SearchResults {
+    var songs: [Song] = []
+    var albums: [Album] = []
+    var artists: [Artist] = []
+    var playlists: [Playlist] = []
+
+    var isEmpty: Bool { songs.isEmpty && albums.isEmpty && artists.isEmpty && playlists.isEmpty }
+}
+
+private func describe(_ error: Error) -> String {
+    if error is CancellationError { return "" }
+    if let url = error as? URLError, url.code == .notConnectedToInternet || url.code == .networkConnectionLost {
+        return "You're offline. Check your connection and try again."
+    }
+    let message = error.localizedDescription
+    if message.localizedCaseInsensitiveContains("developer token") || message.localizedCaseInsensitiveContains("permission") {
+        return "Apple Music refused the request. Make sure MusicKit is enabled for this app's identifier and that access is allowed. (\(message))"
+    }
+    return message
+}
+
+// MARK: - Playback
+
+/// Turns catalog items into commands for the target device.
+private struct Player {
+    let device: RemoteDevice
+    var dismiss: () -> Void
+
+    static func reference(for song: Song) -> TrackReference {
+        TrackReference(catalogID: song.id.rawValue, title: song.title, artist: song.artistName, album: song.albumTitle, duration: song.duration ?? 0)
+    }
+
+    private static let maxUpcoming = 99
+
+    /// Plays `songs[index]` and queues what follows it.
+    func play(_ songs: [Song], from index: Int = 0, shuffled: Bool = false) {
+        var songs = songs
+        if shuffled { songs.shuffle() }
+        guard songs.indices.contains(index) else { return }
+        let tracks = songs.map(Self.reference(for:))
+        let upcoming = Array(tracks.dropFirst(index + 1).prefix(Self.maxUpcoming))
+        device.send(.loadTrack(tracks[index], at: 0, upcoming: upcoming))
+        device.send(.startLoaded(at: 0))
+        dismiss()
+    }
+
+    func queue(_ songs: [Song], next: Bool) {
+        let tracks = songs.map(Self.reference(for:))
+        guard !tracks.isEmpty else { return }
+        device.send(tracks.count == 1 ? .enqueue(tracks[0], next: next) : .enqueueAll(tracks, next: next))
+    }
+}
+
+// MARK: - Search
+
 struct SearchView: View {
     let device: RemoteDevice
     @Environment(\.dismiss) private var dismiss
     @State private var query = ""
-    @State private var songs: [Song] = []
+    @State private var results = SearchResults()
     @State private var isSearching = false
+    @State private var errorMessage: String?
+    @State private var path: [SearchDestination] = []
     @State private var isAuthorized = MusicAuthorization.currentStatus == .authorized
 
+    private var player: Player { Player(device: device) { dismiss() } }
+
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             List {
                 if !isAuthorized {
-                    ContentUnavailableView("Apple Music Access Needed", systemImage: "music.note", description: Text("Allow Tournesol to access Apple Music to search the catalog."))
+                    ContentUnavailableView {
+                        Label("Apple Music Access Needed", systemImage: "music.note")
+                    } description: {
+                        Text("Allow Tournesol to access Apple Music to search the catalog.")
+                    } actions: {
+                        Button("Allow Access") { Task { await requestAccess() } }
+                    }
+                } else if let errorMessage {
+                    ContentUnavailableView {
+                        Label("Search Failed", systemImage: "exclamationmark.triangle")
+                    } description: {
+                        Text(errorMessage)
+                    } actions: {
+                        Button("Try Again") { Task { await search(debounce: false) } }
+                    }
                 } else if query.isEmpty {
                     ContentUnavailableView("Search Apple Music", systemImage: "magnifyingglass", description: Text("Plays on \(device.displayName)."))
-                } else if songs.isEmpty, !isSearching {
+                } else if results.isEmpty, !isSearching {
                     ContentUnavailableView.search(text: query)
                 } else {
-                    ForEach(songs) { song in
-                        SongRow(song: song) { play(song) }
-                            .contextMenu { queueActions(for: song) }
-                            #if os(iOS)
-                            .swipeActions(edge: .leading) { queueActions(for: song) }
-                            #endif
-                    }
+                    resultSections
                 }
             }
             .overlay {
-                if isSearching, songs.isEmpty { ProgressView() }
+                if isSearching, results.isEmpty, errorMessage == nil { ProgressView() }
             }
             .navigationTitle("Search")
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             #endif
-            .searchable(text: $query, prompt: "Songs, artists, albums")
+            .navigationDestination(for: SearchDestination.self) { destination in
+                switch destination {
+                case .album(let album): CollectionView(source: .album(album), player: player)
+                case .playlist(let playlist): CollectionView(source: .playlist(playlist), player: player)
+                case .artist(let artist): ArtistView(artist: artist, player: player, path: $path)
+                }
+            }
+            .searchable(text: $query, prompt: "Songs, albums, artists")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Close", systemImage: "xmark") { dismiss() }
                 }
             }
             .task(id: query) { await search() }
-            .task {
-                if MusicAuthorization.currentStatus == .notDetermined {
-                    isAuthorized = await MusicAuthorization.request() == .authorized
-                }
-            }
+            .task { await requestAccess() }
         }
         #if os(macOS)
         .frame(minWidth: 460, minHeight: 520)
         #endif
     }
 
-    private func search() async {
-        let term = query.trimmingCharacters(in: .whitespaces)
-        guard isAuthorized, !term.isEmpty else {
-            songs = []
-            return
+    @ViewBuilder
+    private var resultSections: some View {
+        if !results.songs.isEmpty {
+            Section("Songs") {
+                ForEach(Array(results.songs.enumerated()), id: \.element.id) { index, song in
+                    SongRow(song: song) {
+                        player.play(results.songs, from: index)
+                    }
+                    .contextMenu { songActions(song) }
+                    #if os(iOS)
+                    .swipeActions(edge: .leading) { songActions(song) }
+                    #endif
+                }
+            }
         }
-        try? await Task.sleep(for: .milliseconds(300))
-        guard !Task.isCancelled else { return }
-        isSearching = true
-        defer { isSearching = false }
-        var request = MusicCatalogSearchRequest(term: term, types: [Song.self])
-        request.limit = 25
-        guard let response = try? await request.response(), !Task.isCancelled else { return }
-        songs = Array(response.songs)
-    }
-
-    private var supportsQueue: Bool {
-        device.info.kind == .iPhone || device.info.kind == .iPad
+        if !results.albums.isEmpty {
+            Section("Albums") {
+                ForEach(results.albums) { album in
+                    NavigationLink(value: SearchDestination.album(album)) {
+                        ItemRow(title: album.title, subtitle: album.artistName, artwork: album.artwork, round: false)
+                    }
+                }
+            }
+        }
+        if !results.artists.isEmpty {
+            Section("Artists") {
+                ForEach(results.artists) { artist in
+                    NavigationLink(value: SearchDestination.artist(artist)) {
+                        ItemRow(title: artist.name, subtitle: nil, artwork: artist.artwork, round: true)
+                    }
+                }
+            }
+        }
+        if !results.playlists.isEmpty {
+            Section("Playlists") {
+                ForEach(results.playlists) { playlist in
+                    NavigationLink(value: SearchDestination.playlist(playlist)) {
+                        ItemRow(title: playlist.name, subtitle: playlist.curatorName, artwork: playlist.artwork, round: false)
+                    }
+                }
+            }
+        }
     }
 
     @ViewBuilder
-    private func queueActions(for song: Song) -> some View {
-        Button("Play", systemImage: "play.fill") { play(song) }
-        if supportsQueue {
-            Button("Play Next", systemImage: "text.line.first.and.arrowtriangle.forward") {
-                device.send(.enqueue(reference(for: song), next: true))
-            }
+    private func songActions(_ song: Song) -> some View {
+        Button("Play", systemImage: "play.fill") { player.play([song]) }
+        Button("Play Next", systemImage: "text.line.first.and.arrowtriangle.forward") { player.queue([song], next: true) }
             .tint(.orange)
-            Button("Add to Queue", systemImage: "text.line.last.and.arrowtriangle.forward") {
-                device.send(.enqueue(reference(for: song), next: false))
-            }
+        Button("Add to Queue", systemImage: "text.line.last.and.arrowtriangle.forward") { player.queue([song], next: false) }
             .tint(.indigo)
+    }
+
+    // MARK: Loading
+
+    private func requestAccess() async {
+        if MusicAuthorization.currentStatus == .notDetermined {
+            isAuthorized = await MusicAuthorization.request() == .authorized
+        } else {
+            isAuthorized = MusicAuthorization.currentStatus == .authorized
         }
     }
 
-    private func reference(for song: Song) -> TrackReference {
-        TrackReference(catalogID: song.id.rawValue, title: song.title, artist: song.artistName, album: song.albumTitle, duration: song.duration ?? 0)
+    private func search(debounce: Bool = true) async {
+        let term = query.trimmingCharacters(in: .whitespaces)
+        guard isAuthorized, !term.isEmpty else {
+            results = SearchResults()
+            errorMessage = nil
+            return
+        }
+        if debounce { try? await Task.sleep(for: .milliseconds(300)) }
+        guard !Task.isCancelled else { return }
+        isSearching = true
+        defer { isSearching = false }
+        var request = MusicCatalogSearchRequest(term: term, types: [Song.self, Album.self, Artist.self, Playlist.self])
+        request.limit = 15
+        do {
+            let response = try await request.response()
+            guard !Task.isCancelled else { return }
+            results = SearchResults(songs: Array(response.songs), albums: Array(response.albums), artists: Array(response.artists), playlists: Array(response.playlists))
+            errorMessage = nil
+        } catch {
+            guard !Task.isCancelled else { return }
+            let message = describe(error)
+            if !message.isEmpty { errorMessage = message }
+        }
     }
 
-    private func play(_ song: Song) {
-        let track = reference(for: song)
-        device.send(.loadTrack(track, at: 0, upcoming: []))
-        device.send(.startLoaded(at: 0))
-        dismiss()
+}
+
+// MARK: - Collections
+
+private enum CollectionSource {
+    case album(Album)
+    case playlist(Playlist)
+
+    var title: String {
+        switch self {
+        case .album(let album): album.title
+        case .playlist(let playlist): playlist.name
+        }
+    }
+
+    var subtitle: String? {
+        switch self {
+        case .album(let album): album.artistName
+        case .playlist(let playlist): playlist.curatorName
+        }
+    }
+
+    var artwork: MusicKit.Artwork? {
+        switch self {
+        case .album(let album): album.artwork
+        case .playlist(let playlist): playlist.artwork
+        }
+    }
+
+    func songs() async throws -> [Song] {
+        switch self {
+        case .album(let album):
+            let detailed = try await album.with([.tracks])
+            return (detailed.tracks ?? []).compactMap(\.song)
+        case .playlist(let playlist):
+            let detailed = try await playlist.with([.tracks])
+            return (detailed.tracks ?? []).compactMap(\.song)
+        }
+    }
+}
+
+private extension Track {
+    var song: Song? {
+        if case .song(let song) = self { return song }
+        return nil
+    }
+}
+
+private struct CollectionView: View {
+    let source: CollectionSource
+    let player: Player
+    @State private var songs: [Song] = []
+    @State private var isLoading = true
+    @State private var errorMessage: String?
+
+    var body: some View {
+        List {
+            Section {
+                HStack(spacing: 14) {
+                    ArtworkImage(artwork: source.artwork, side: 96, radius: 12)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(source.title).font(.title3.weight(.semibold))
+                        if let subtitle = source.subtitle { Text(subtitle).foregroundStyle(.secondary) }
+                    }
+                    .lineLimit(2)
+                }
+                .listRowBackground(Color.clear)
+                if !songs.isEmpty {
+                    PlayButtons(songs: songs, player: player)
+                        .listRowBackground(Color.clear)
+                }
+            }
+            if let errorMessage {
+                ContentUnavailableView {
+                    Label("Couldn't Load Tracks", systemImage: "exclamationmark.triangle")
+                } description: {
+                    Text(errorMessage)
+                } actions: {
+                    Button("Try Again") { Task { await load() } }
+                }
+            } else if isLoading {
+                ProgressView().frame(maxWidth: .infinity)
+            } else {
+                Section {
+                    ForEach(Array(songs.enumerated()), id: \.offset) { index, song in
+                        SongRow(song: song, showsArtwork: false, number: index + 1) { player.play(songs, from: index) }
+                    }
+                }
+            }
+        }
+        .navigationTitle(source.title)
+        #if os(iOS)
+        .navigationBarTitleDisplayMode(.inline)
+        #endif
+        .task { await load() }
+    }
+
+    private func load() async {
+        isLoading = true
+        errorMessage = nil
+        defer { isLoading = false }
+        do {
+            songs = try await source.songs()
+        } catch {
+            errorMessage = describe(error)
+        }
+    }
+}
+
+private struct ArtistView: View {
+    let artist: Artist
+    let player: Player
+    @Binding var path: [SearchDestination]
+    @State private var topSongs: [Song] = []
+    @State private var albums: [Album] = []
+    @State private var isLoading = true
+    @State private var errorMessage: String?
+
+    var body: some View {
+        List {
+            if let errorMessage {
+                ContentUnavailableView {
+                    Label("Couldn't Load Artist", systemImage: "exclamationmark.triangle")
+                } description: {
+                    Text(errorMessage)
+                } actions: {
+                    Button("Try Again") { Task { await load() } }
+                }
+            } else if isLoading {
+                ProgressView().frame(maxWidth: .infinity)
+            }
+            if !topSongs.isEmpty {
+                Section {
+                    PlayButtons(songs: topSongs, player: player)
+                        .listRowBackground(Color.clear)
+                    ForEach(Array(topSongs.enumerated()), id: \.element.id) { index, song in
+                        SongRow(song: song) { player.play(topSongs, from: index) }
+                    }
+                } header: {
+                    Text("Top Songs")
+                }
+            }
+            if !albums.isEmpty {
+                Section("Albums") {
+                    ForEach(albums) { album in
+                        Button {
+                            path.append(.album(album))
+                        } label: {
+                            ItemRow(title: album.title, subtitle: album.releaseDate.map { $0.formatted(.dateTime.year()) }, artwork: album.artwork, round: false)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+        }
+        .navigationTitle(artist.name)
+        #if os(iOS)
+        .navigationBarTitleDisplayMode(.inline)
+        #endif
+        .task { await load() }
+    }
+
+    private func load() async {
+        isLoading = true
+        errorMessage = nil
+        defer { isLoading = false }
+        do {
+            let detailed = try await artist.with([.topSongs, .albums])
+            topSongs = Array(detailed.topSongs ?? [])
+            albums = Array(detailed.albums ?? [])
+        } catch {
+            errorMessage = describe(error)
+        }
+    }
+}
+
+private struct PlayButtons: View {
+    let songs: [Song]
+    let player: Player
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Button { player.play(songs) } label: {
+                Label("Play", systemImage: "play.fill").frame(maxWidth: .infinity)
+            }
+            Button { player.play(songs, shuffled: true) } label: {
+                Label("Shuffle", systemImage: "shuffle").frame(maxWidth: .infinity)
+            }
+            Menu {
+                Button("Play Next", systemImage: "text.line.first.and.arrowtriangle.forward") { player.queue(songs, next: true) }
+                Button("Add to Queue", systemImage: "text.line.last.and.arrowtriangle.forward") { player.queue(songs, next: false) }
+            } label: {
+                Image(systemName: "ellipsis").frame(width: 28)
+            }
+        }
+        .buttonStyle(.bordered)
+        .controlSize(.large)
+    }
+}
+
+// MARK: - Rows
+
+private struct ArtworkImage: View {
+    let artwork: MusicKit.Artwork?
+    let side: CGFloat
+    let radius: CGFloat
+
+    var body: some View {
+        AsyncImage(url: artwork?.url(width: Int(side * 3), height: Int(side * 3))) { image in
+            image.resizable().scaledToFill()
+        } placeholder: {
+            Rectangle().fill(.quaternary)
+        }
+        .frame(width: side, height: side)
+        .clipShape(.rect(cornerRadius: radius, style: .continuous))
+    }
+}
+
+private struct ItemRow: View {
+    let title: String
+    let subtitle: String?
+    let artwork: MusicKit.Artwork?
+    let round: Bool
+
+    var body: some View {
+        HStack(spacing: 12) {
+            ArtworkImage(artwork: artwork, side: 48, radius: round ? 24 : 8)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title).font(.body.weight(.medium))
+                if let subtitle { Text(subtitle).font(.subheadline).foregroundStyle(.secondary) }
+            }
+            .lineLimit(1)
+        }
     }
 }
 
 private struct SongRow: View {
     let song: Song
+    var showsArtwork = true
+    var number: Int?
     let onPlay: () -> Void
 
     var body: some View {
         Button(action: onPlay) {
             HStack(spacing: 12) {
-                AsyncImage(url: song.artwork?.url(width: 120, height: 120)) { image in
-                    image.resizable().scaledToFill()
-                } placeholder: {
-                    Rectangle().fill(.quaternary)
+                if let number {
+                    Text("\(number)")
+                        .font(.subheadline.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                        .frame(width: 24)
                 }
-                .frame(width: 48, height: 48)
-                .clipShape(.rect(cornerRadius: 8, style: .continuous))
+                if showsArtwork {
+                    ArtworkImage(artwork: song.artwork, side: 48, radius: 8)
+                }
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(song.title)
                         .font(.body.weight(.medium))
-                    Text([song.artistName, song.albumTitle].compactMap { $0 }.joined(separator: " · "))
+                    Text([song.artistName, showsArtwork ? song.albumTitle : nil].compactMap { $0 }.joined(separator: " · "))
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }

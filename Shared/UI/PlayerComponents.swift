@@ -390,6 +390,10 @@ struct ScrubberView: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Playback Position")
         .accessibilityValue(Self.format(state.elapsed(at: .now)))
+        .accessibilityAdjustableAction { direction in
+            let step: TimeInterval = direction == .increment ? 10 : -10
+            onSeek(min(max(0, state.elapsed(at: .now) + step), state.duration))
+        }
     }
 
     static func format(_ time: TimeInterval) -> String {
@@ -452,6 +456,7 @@ struct TransportControls: View {
             .buttonStyle(PressableStyle())
 //            .glassEffect(.regular.tint(device.accent.color.opacity(0.5)).interactive(), in: .circle)
             .sensoryFeedback(.impact(weight: .medium), trigger: toggles)
+            .help(device.state.isPlaying ? "Pause" : "Play")
             .accessibilityLabel(device.state.isPlaying ? "Pause" : "Play")
 
             SkipButton(symbol: "forward.fill", size: 28 * scale, label: "Next") { device.send(.next) }
@@ -481,6 +486,7 @@ private struct SkipButton: View {
         }
         .buttonStyle(PressableStyle(pressedBackground: true))
         .sensoryFeedback(.impact(weight: .light), trigger: taps)
+        .help(label)
         .accessibilityLabel(label)
     }
 }

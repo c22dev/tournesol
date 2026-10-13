@@ -29,6 +29,11 @@ struct TournesolMacApp: App {
         .windowStyle(.hiddenTitleBar)
         .windowResizability(.contentMinSize)
         .defaultLaunchBehavior(.suppressed)
+        .commands {
+            CommandMenu("Playback") {
+                PlaybackMenu(store: model.hub.store)
+            }
+        }
 
         MenuBarExtra {
             MenuBarRemote(store: model.hub.store)
@@ -41,6 +46,51 @@ struct TournesolMacApp: App {
         Settings {
             MacSettingsView(model: model)
         }
+    }
+}
+
+private struct PlaybackMenu: View {
+    let store: DeviceStore
+
+    var body: some View {
+        let device = store.selected
+        let hasTrack = device?.state.hasTrack == true
+        Button(device?.state.isPlaying == true ? "Pause" : "Play") { device?.send(.togglePlayPause) }
+            .keyboardShortcut(.space, modifiers: [])
+            .disabled(!hasTrack)
+        Button("Next") { device?.send(.next) }
+            .keyboardShortcut(.rightArrow, modifiers: .command)
+            .disabled(!hasTrack)
+        Button("Previous") { device?.send(.previous) }
+            .keyboardShortcut(.leftArrow, modifiers: .command)
+            .disabled(!hasTrack)
+        Divider()
+        Button("Skip Forward 10 Seconds") { skip(10) }
+            .keyboardShortcut(.rightArrow, modifiers: [.command, .option])
+            .disabled(!hasTrack)
+        Button("Skip Back 10 Seconds") { skip(-10) }
+            .keyboardShortcut(.leftArrow, modifiers: [.command, .option])
+            .disabled(!hasTrack)
+        Divider()
+        Button("Increase Volume") { device?.stepVolume(1) }
+            .keyboardShortcut(.upArrow, modifiers: .command)
+            .disabled(device?.state.volume == nil)
+        Button("Decrease Volume") { device?.stepVolume(-1) }
+            .keyboardShortcut(.downArrow, modifiers: .command)
+            .disabled(device?.state.volume == nil)
+        Divider()
+        Button("Search Apple Music…") { NotificationCenter.default.post(name: .showSearch, object: nil) }
+            .keyboardShortcut("f")
+            .disabled(device?.isConnected != true)
+        Button("Up Next") { NotificationCenter.default.post(name: .showQueue, object: nil) }
+            .keyboardShortcut("u", modifiers: [.command, .option])
+            .disabled(device?.isConnected != true)
+    }
+
+    private func skip(_ seconds: TimeInterval) {
+        guard let device = store.selected else { return }
+        let state = device.state
+        device.send(.seek(min(max(0, state.elapsed(at: .now) + seconds), state.duration)))
     }
 }
 
@@ -57,8 +107,17 @@ private struct MenuBarLabel: View {
 }
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
+    private var spaceMonitor: Any?
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         LoginItem.registerOnFirstLaunch()
+        // a menu item can't take a bare Space, so catch it here unless a text field has focus
+        spaceMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+            guard event.keyCode == 49, event.modifierFlags.intersection(.deviceIndependentFlagsMask).isEmpty,
+                  !(NSApp.keyWindow?.firstResponder is NSText) else { return event }
+            AppModel.shared.hub.store.selected?.send(.togglePlayPause)
+            return nil
+        }
         let event = NSAppleEventManager.shared().currentAppleEvent
         let launchedAtLogin = event?.eventID == kAEOpenApplication
             && event?.paramDescriptor(forKeyword: keyAEPropData)?.enumCodeValue == keyAELaunchedAsLogInItem
@@ -66,6 +125,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
             NotificationCenter.default.post(name: .openMainWindow, object: nil)
         }
+    }
+
+    func applicationDockMenu(_ sender: NSApplication) -> NSMenu? {
+        let store = AppModel.shared.hub.store
+        guard let device = store.selected, device.state.hasTrack else { return nil }
+        let menu = NSMenu()
+        for (title, command) in [(device.state.isPlaying ? "Pause" : "Play", Command.togglePlayPause), ("Next", .next), ("Previous", .previous)] {
+            let item = NSMenuItem(title: title, action: #selector(sendDockCommand(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = DockCommand(command: command)
+            menu.addItem(item)
+        }
+        return menu
+    }
+
+    private final class DockCommand: NSObject {
+        let command: Command
+        init(command: Command) { self.command = command }
+    }
+
+    @objc private func sendDockCommand(_ item: NSMenuItem) {
+        guard let dock = item.representedObject as? DockCommand else { return }
+        AppModel.shared.hub.store.selected?.send(dock.command)
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows: Bool) -> Bool {

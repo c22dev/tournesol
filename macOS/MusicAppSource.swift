@@ -6,6 +6,9 @@
 //
 
 import AppKit
+import OSLog
+
+private let log = Logger(subsystem: "ch.cclerc.Tournesol", category: "MusicApp")
 
 final class MusicAppSource: LocalPlayer {
     var onChange: (() -> Void)?
@@ -32,10 +35,25 @@ final class MusicAppSource: LocalPlayer {
             self?.receive(info)
         }
         nowPlaying.start()
+        #if DEBUG
+        if UserDefaults.standard.bool(forKey: "nativeSelfTest") {
+            Task { [weak self] in
+                try? await Task.sleep(for: .seconds(6))
+                await self?.runNativeSelfTest()
+            }
+        }
+        #endif
         fallbackTask = Task { [weak self] in
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(3))
                 await self?.pollMusicIfNeeded()
+                await self?.refreshPlaylistQueue()
+            }
+        }
+        advanceTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .milliseconds(400))
+                self?.advanceIfFinished()
             }
         }
         Task { [weak self] in
@@ -54,15 +72,57 @@ final class MusicAppSource: LocalPlayer {
         case .play: script.send("play")
         case .pause: script.send("pause")
         case .togglePlayPause: script.send("playpause")
-        case .next: script.send("next track")
+        case .next:
+            if queue.isEmpty { script.send("next track") } else { advance() }
         case .previous: script.send("back track")
         case .seek(let position): script.send("set player position to \(position)")
         case .setVolume(let volume): audio.volume = volume
-        case .loadTrack(let track, _, _): load(track)
-        case .enqueue: break
+        case .loadTrack(let track, let position, let upcoming):
+            log.info("loadTrack \(track.title ?? "?", privacy: .public) catalogID=\(track.catalogID ?? "nil", privacy: .public) upcoming=\(upcoming.count)")
+            if position < 1, isUsable(.edit), let id = queuedItemID(of: track, followedBy: upcoming) {
+                loading?.cancel()
+                loaded = nil
+                serialized { [self] in
+                    let worked = await attemptNative(.edit, send: {
+                        script.editQueue([.play(id)])
+                        script.send("play")
+                    }, confirm: { TrackMatcher.sameSong(state.title, track.title) })
+                    guard !worked else { return }
+                    queue = upcoming
+                    stopAfterCurrent = false
+                    advancedFrom = nil
+                    load(track)
+                    startLoaded(at: 0)
+                    publish()
+                }
+                break
+            }
+            queue = upcoming
+            stopAfterCurrent = false
+            advancedFrom = nil
+            load(track)
+        case .enqueue(let track, let next): enqueue([track], next: next)
+        case .enqueueAll(let tracks, let next): enqueue(tracks, next: next)
+        case .setQueue(let tracks):
+            if queue.isEmpty, !stopAfterCurrent, !tracks.isEmpty, isUsable(.edit) {
+                serialized { [self] in
+                    if let operations = nativeQueueEdit(to: tracks) {
+                        if operations.isEmpty { return }
+                        if await attemptNative(.edit, send: { script.editQueue(operations) }, confirm: { upcoming(matches: tracks) }) { return }
+                    }
+                    queue = tracks
+                    stopAfterCurrent = false
+                    publish()
+                }
+            } else {
+                queue = tracks
+                stopAfterCurrent = tracks.isEmpty
+            }
         case .startLoaded(let position): startLoaded(at: position)
         case .handOff: fadeOutAndPause()
-        case .release: break
+        case .release:
+            queue = []
+            stopAfterCurrent = false
         }
         publish()
     }
@@ -226,7 +286,234 @@ final class MusicAppSource: LocalPlayer {
     private var preparing: Set<String> = []
     private var loading: Task<Void, Never>?
     private var loaded: (track: TrackReference, located: Located)?
-    func upcomingTracks() async -> [TrackReference] { [] }
+    func upcomingTracks() async -> [TrackReference] {
+        queue.isEmpty && !stopAfterCurrent ? systemQueue : queue
+    }
+
+    /// What Music plays after the current track. Falls back to the playlist, which has no ids, so native edits stay off.
+    private var systemUpcoming: (anchor: String?, slots: [QueueSlot]) {
+        guard !isForcedToFail(.read), let info, let items = info.queue, !items.isEmpty else {
+            return (nil, playlistQueue.map { QueueSlot(id: nil, track: $0) })
+        }
+        let current = items.firstIndex { $0.id != nil && $0.id == info.itemID }
+            ?? items.firstIndex { TrackMatcher.sameSong($0.title, info.title) }
+            ?? 0
+        let slots = items.dropFirst(current + 1).map { item in
+            QueueSlot(id: item.id, track: TrackReference(
+                catalogID: item.catalogID.flatMap { $0 > 0 ? String($0) : nil },
+                title: item.title,
+                artist: item.artist.flatMap { $0.isEmpty ? nil : $0 },
+                album: item.album.flatMap { $0.isEmpty ? nil : $0 },
+                duration: item.duration ?? 0
+            ))
+        }
+        return (items[current].id, slots)
+    }
+
+    private var systemQueue: [TrackReference] { systemUpcoming.slots.map(\.track) }
+
+    private var playlistQueue: [TrackReference] = []
+    private var playlistRetryAfter = ContinuousClock.now
+
+    private enum NativeFeature: Hashable {
+        case edit, insert, start, read
+    }
+
+    // Private MediaRemote calls can break with a macOS update: two failures in a row and the fallback is used for ten minutes.
+    private var health = NativeHealth<NativeFeature>()
+    private var lastNativeResult: [NativeFeature: Bool] = [:]
+    private var editTask: Task<Void, Never>?
+
+    private func isUsable(_ feature: NativeFeature) -> Bool {
+        health.isUsable(feature)
+    }
+
+    /// Debug only: launch with `-failNative '("edit","insert")'` to force a fallback.
+    private func isForcedToFail(_ feature: NativeFeature) -> Bool {
+        #if DEBUG
+        UserDefaults.standard.stringArray(forKey: "failNative")?.contains("\(feature)") == true
+        #else
+        false
+        #endif
+    }
+
+    private func attemptNative(_ feature: NativeFeature, timeout: Duration = .seconds(4), send: () -> Void, confirm: () -> Bool) async -> Bool {
+        guard isUsable(feature) else { return false }
+        let started = ContinuousClock.now
+        if !isForcedToFail(feature) {
+            send()
+            while ContinuousClock.now - started < timeout {
+                try? await Task.sleep(for: .milliseconds(200))
+                if confirm() {
+                    health.succeeded(feature)
+                    lastNativeResult[feature] = true
+                    log.info("native \(String(describing: feature), privacy: .public) confirmed after \((ContinuousClock.now - started) / .milliseconds(1)) ms")
+                    return true
+                }
+            }
+        }
+        let count = health.failed(feature)
+        lastNativeResult[feature] = false
+        log.error("native \(String(describing: feature), privacy: .public) not confirmed (\(count) in a row), using the fallback")
+        return false
+    }
+
+    /// One native change at a time, so each is planned against the queue the last one left.
+    private func serialized(_ work: @escaping () async -> Void) {
+        let previous = editTask
+        editTask = Task {
+            await previous?.value
+            await work()
+        }
+    }
+
+    private func upcoming(matches tracks: [TrackReference]) -> Bool {
+        QueuePlanner.matches(systemUpcoming.slots, tracks)
+    }
+
+    private func refreshPlaylistQueue() async {
+        let hasNative = info?.queue?.isEmpty == false
+        guard !hasNative, info?.client == "com.apple.Music", info?.title != nil else {
+            playlistQueue = []
+            return
+        }
+        guard ContinuousClock.now >= playlistRetryAfter else { return }
+        let source = """
+            tell application "Music"
+                if player state is stopped then return {}
+                set p to current playlist
+                set i to index of current track
+                set n to count of tracks of p
+                if i >= n then return {}
+                set j to i + 25
+                if j > n then set j to n
+                set out to {}
+                repeat with t in (tracks (i + 1) thru j of p)
+                    set end of out to {name of t, artist of t, album of t, duration of t}
+                end repeat
+                return out
+            end tell
+            """
+        let found = await script.run(source) { list -> [TrackReference]? in
+            guard list.numberOfItems > 0 else { return [] }
+            return (1...list.numberOfItems).compactMap { index in
+                guard let entry = list.atIndex(index), entry.numberOfItems >= 4 else { return nil }
+                return TrackReference(
+                    catalogID: nil,
+                    title: entry.atIndex(1)?.stringValue,
+                    artist: entry.atIndex(2)?.stringValue.flatMap { $0.isEmpty ? nil : $0 },
+                    album: entry.atIndex(3)?.stringValue.flatMap { $0.isEmpty ? nil : $0 },
+                    duration: entry.atIndex(4)?.doubleValue ?? 0
+                )
+            }
+        }
+        playlistQueue = found ?? []
+        // a queue built from catalog songs has no playlist behind it
+        if found == nil { playlistRetryAfter = .now + .seconds(30) }
+    }
+
+    /// The queue id of `track` when `upcoming` is what follows it, so Music can jump straight to it.
+    private func queuedItemID(of track: TrackReference, followedBy upcoming: [TrackReference]) -> String? {
+        guard queue.isEmpty, !stopAfterCurrent else { return nil }
+        let slots = systemUpcoming.slots
+        guard let index = slots.firstIndex(where: { $0.track.signature == track.signature }), let id = slots[index].id,
+              slots.dropFirst(index + 1).map({ $0.track.signature }) == upcoming.map(\.signature) else { return nil }
+        return id
+    }
+
+    private func nativeQueueEdit(to tracks: [TrackReference]) -> [MusicScript.QueueOperation]? {
+        let upcoming = systemUpcoming
+        return QueuePlanner.plan(target: tracks, upcoming: upcoming.slots, anchor: upcoming.anchor)?.map { edit in
+            switch edit {
+            case .remove(let id): .remove(id)
+            case .move(let id, let after): .move(id, after: after)
+            }
+        }
+    }
+
+    /// Set when the user empties the queue while Music still has its own items lined up.
+    private var stopAfterCurrent = false
+
+    // Music can't queue arbitrary catalog songs from AppleScript, so Tournesol keeps its own up-next list
+    // and starts the following track itself when the current one ends.
+    private var queue: [TrackReference] = []
+    private var advancedFrom: String?
+    private var advanceTask: Task<Void, Never>?
+
+    private func enqueue(_ tracks: [TrackReference], next: Bool) {
+        guard !tracks.isEmpty else { return }
+        guard queue.isEmpty, !stopAfterCurrent, isUsable(.insert), systemUpcoming.anchor != nil else { return emulateEnqueue(tracks, next: next) }
+        serialized { [self] in
+            if await enqueueNatively(tracks, next: next) { return }
+            emulateEnqueue(tracks, next: next)
+            publish()
+        }
+    }
+
+    /// Tries Music's own Up Next. False means the caller should use Tournesol's list.
+    private func enqueueNatively(_ tracks: [TrackReference], next: Bool) async -> Bool {
+        var ids: [String] = []
+        for track in tracks {
+            if let id = track.catalogID, !id.isEmpty, id.allSatisfy(\.isNumber) {
+                ids.append(id)
+            } else if let id = await CatalogLookup.resolve(track, needsArtwork: false).catalogID, id.allSatisfy(\.isNumber) {
+                ids.append(id)
+            } else {
+                return false
+            }
+        }
+        // behind what we queued before, ahead of the rest of Music's queue
+        let waiting = QueuePlanner.waiting(pendingAdds, in: systemUpcoming.slots)
+        pendingAdds = waiting.songs
+        let anchor = next ? nil : waiting.anchor
+        let position = next ? 0 : waiting.songs.count
+        let worked = await attemptNative(.insert, send: { script.insertIntoQueue(storeIDs: ids, next: next, after: anchor) }, confirm: {
+            QueuePlanner.holds(tracks[0], at: position, in: systemUpcoming.slots)
+        })
+        if worked {
+            if next { pendingAdds.insert(contentsOf: tracks, at: 0) } else { pendingAdds.append(contentsOf: tracks) }
+        }
+        return worked
+    }
+
+    /// Songs we queued that haven't played yet.
+    private var pendingAdds: [TrackReference] = []
+
+    private func emulateEnqueue(_ tracks: [TrackReference], next: Bool) {
+        let isIdle = !state.isPlaying && loaded == nil && loading == nil
+        if queue.isEmpty, !stopAfterCurrent { queue = systemQueue }
+        stopAfterCurrent = false
+        if next { queue.insert(contentsOf: tracks, at: 0) } else { queue.append(contentsOf: tracks) }
+        log.info("enqueue \(tracks.count) next=\(next) queue=\(self.queue.count)")
+        if isIdle { advance() }
+    }
+
+    private func advance() {
+        guard !queue.isEmpty else { return }
+        let upcoming = queue.removeFirst()
+        advancedFrom = state.track.signature
+        log.info("advance to \(upcoming.title ?? "?", privacy: .public)")
+        load(upcoming)
+        startLoaded(at: 0)
+    }
+
+    private func advanceIfFinished() {
+        guard loading == nil, loaded == nil, state.title != nil, state.duration > 0, !queue.isEmpty || stopAfterCurrent else { return }
+        let signature = state.track.signature
+        if let advancedFrom, advancedFrom != signature { self.advancedFrom = nil }
+        guard advancedFrom != signature else { return }
+
+        let remaining = state.duration - state.elapsed(at: .now)
+        if remaining < 10, let first = queue.first { prepare(first) }
+        guard state.isPlaying ? remaining < 0.6 : (remaining < 1.5 && state.elapsed > 5) else { return }
+        if stopAfterCurrent {
+            stopAfterCurrent = false
+            advancedFrom = signature
+            script.send("pause")
+        } else {
+            advance()
+        }
+    }
 
     func prepare(_ track: TrackReference) {
         let signature = track.signature
@@ -286,10 +573,20 @@ final class MusicAppSource: LocalPlayer {
         loading = Task {
             var located = prepared[track.signature]
             if located == nil { located = await locate(track) }
-            guard let located, !Task.isCancelled else { return }
+            guard let located, !Task.isCancelled else {
+                log.error("could not locate \(track.title ?? "?", privacy: .public)")
+                return
+            }
             loaded = (track, located)
             publish()
         }
+    }
+
+    /// Catalog id for a native start; songs without one go through AppleScript.
+    private func nativeStartID(_ track: TrackReference, _ located: Located) -> String? {
+        let id: String?
+        if let known = track.catalogID, !known.isEmpty { id = known } else if case .catalog(let found) = located { id = found } else { id = nil }
+        return id.flatMap { $0.allSatisfy(\.isNumber) ? $0 : nil }
     }
 
     private func startLoaded(at position: TimeInterval) {
@@ -298,11 +595,18 @@ final class MusicAppSource: LocalPlayer {
         Task {
             await loading?.value
             loading = nil
-            guard let (track, located) = loaded, let title = track.title else { return }
+            guard let (track, located) = loaded, let title = track.title else {
+                log.error("startLoaded: nothing loaded")
+                return
+            }
             loaded = nil
 
             let volume = await musicVolume()
             script.send("set sound volume to 0")
+            if let id = nativeStartID(track, located), await attemptNative(.start, send: { script.startPlayback(storeIDs: [id]) }, confirm: { TrackMatcher.sameSong(state.title, title) }) {
+                await confirmStart(title: title, seeked: false, volume: volume, target: target)
+                return
+            }
             switch located {
             case .library(let id):
                 script.send("play (track id \(id) of library playlist 1)")
@@ -384,3 +688,64 @@ final class MusicAppSource: LocalPlayer {
         "\"" + text.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\"") + "\""
     }
 }
+
+#if DEBUG
+extension MusicAppSource {
+    /// Runs each native queue feature once and logs `SELFTEST` lines. Launch with `-nativeSelfTest YES`.
+    /// It changes Music's queue and starts a song (muted), so use a scratch session.
+    func runNativeSelfTest() async {
+        let first = TrackReference(catalogID: "1202853498", title: "Take the Crown", artist: nil, album: nil, duration: 0)
+        let second = TrackReference(catalogID: "1827235586", title: "Golden Brown (Slowed Down Version)", artist: nil, album: nil, duration: 0)
+        func report(_ step: String, _ outcome: String) { log.info("SELFTEST \(step, privacy: .public): \(outcome, privacy: .public)") }
+        func settle() async { try? await Task.sleep(for: .seconds(6)) }
+
+        for _ in 0..<20 where systemUpcoming.slots.isEmpty && systemUpcoming.anchor == nil && !isForcedToFail(.read) { try? await Task.sleep(for: .milliseconds(500)) }
+        let nativeRead = systemUpcoming.anchor != nil
+        report("read", nativeRead ? "native" : "fallback (\(playlistQueue.count) from playlist)")
+        let volume = await musicVolume()
+        script.send("set sound volume to 0")
+
+        func outcome(_ feature: NativeFeature, held: Bool) -> String {
+            if held, lastNativeResult[feature] == true { return "native" }
+            if lastNativeResult[feature] == false || isForcedToFail(.read) || !isUsable(feature) { return "fallback" }
+            return held && !queue.isEmpty ? "own list (native not attempted)" : "FAILED"
+        }
+
+        perform(.enqueue(first, next: true))
+        await settle()
+        report("play next", outcome(.insert, held: QueuePlanner.holds(first, at: 0, in: systemUpcoming.slots)))
+
+        perform(.enqueue(second, next: false))
+        await settle()
+        report("add to queue", outcome(.insert, held: QueuePlanner.holds(second, at: 1, in: systemUpcoming.slots)))
+
+        var order = await upcomingTracks()
+        if order.count >= 2 {
+            let moved = order.removeLast()
+            order.insert(moved, at: 0)
+            perform(.setQueue(order))
+            await settle()
+            let now = await upcomingTracks()
+            report("reorder", outcome(.edit, held: now.first.map { TrackMatcher.sameSong($0.title, moved.title) } == true))
+            order.removeFirst()
+            perform(.setQueue(order))
+            await settle()
+            let after = await upcomingTracks()
+            report("remove", outcome(.edit, held: after.first.map { !TrackMatcher.sameSong($0.title, moved.title) } ?? true))
+        } else {
+            report("reorder", "skipped: the queue is too short")
+        }
+
+        perform(.loadTrack(second, at: 0, upcoming: []))
+        perform(.startLoaded(at: 0))
+        for _ in 0..<30 where !TrackMatcher.sameSong(state.title, second.title) { try? await Task.sleep(for: .milliseconds(500)) }
+        report("start", TrackMatcher.sameSong(state.title, second.title) ? outcome(.start, held: true) : "FAILED")
+
+        try? await Task.sleep(for: .seconds(5))
+        script.send("pause")
+        script.send("set sound volume to \(volume)")
+        perform(.release)
+        report("done", "Music paused, volume restored")
+    }
+}
+#endif
