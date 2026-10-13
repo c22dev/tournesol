@@ -42,10 +42,32 @@ struct SearchButton: View {
 
 // MARK: - Model
 
-private enum SearchDestination: Hashable {
+enum SearchDestination: Hashable {
     case album(Album)
     case artist(Artist)
     case playlist(Playlist)
+}
+
+struct BrowseItem: Identifiable {
+    let id: String
+    let title: String
+    let subtitle: String?
+    let artwork: MusicKit.Artwork?
+    let destination: SearchDestination
+}
+
+struct BrowseSection: Identifiable {
+    let id: String
+    let title: String
+    let items: [BrowseItem]
+}
+
+private extension Album {
+    var browseItem: BrowseItem { BrowseItem(id: "album-\(id.rawValue)", title: title, subtitle: artistName, artwork: artwork, destination: .album(self)) }
+}
+
+private extension Playlist {
+    var browseItem: BrowseItem { BrowseItem(id: "playlist-\(id.rawValue)", title: name, subtitle: curatorName, artwork: artwork, destination: .playlist(self)) }
 }
 
 private struct SearchResults {
@@ -101,6 +123,58 @@ private struct Player {
     }
 }
 
+
+// MARK: - Browse
+
+/// Recents, your playlists and recommendations. Anything that fails to load is just left out.
+enum BrowseLoader {
+    static func sections() async -> [BrowseSection] {
+        async let recents = recentlyPlayed()
+        async let playlists = libraryPlaylists()
+        async let recommended = recommendations()
+        return await ([recents, playlists].compactMap { $0 }) + recommended
+    }
+
+    private static func recentlyPlayed() async -> BrowseSection? {
+        var request = MusicRecentlyPlayedContainerRequest()
+        request.limit = 12
+        guard let response = try? await request.response() else { return nil }
+        let items = response.items.compactMap { item -> BrowseItem? in
+            switch item {
+            case .album(let album): album.browseItem
+            case .playlist(let playlist): playlist.browseItem
+            default: nil
+            }
+        }
+        return items.isEmpty ? nil : BrowseSection(id: "recents", title: "Recently Played", items: items)
+    }
+
+    // The Mac's library backend crashes on some sort keys, so playlists are sorted here.
+    private static func libraryPlaylists() async -> BrowseSection? {
+        guard let response = try? await MusicLibraryRequest<Playlist>().response() else { return nil }
+        let recent = response.items.sorted { ($0.lastPlayedDate ?? .distantPast) > ($1.lastPlayedDate ?? .distantPast) }.prefix(25)
+        let items = recent.map(\.browseItem)
+        return items.isEmpty ? nil : BrowseSection(id: "library", title: "Your Playlists", items: items)
+    }
+
+    private static func recommendations() async -> [BrowseSection] {
+        var request = MusicPersonalRecommendationsRequest()
+        request.limit = 6
+        guard let response = try? await request.response() else { return [] }
+        return response.recommendations.compactMap { recommendation in
+            let items = recommendation.items.compactMap { item -> BrowseItem? in
+                switch item {
+                case .album(let album): album.browseItem
+                case .playlist(let playlist): playlist.browseItem
+                default: nil
+                }
+            }
+            guard let title = recommendation.title, !items.isEmpty else { return nil }
+            return BrowseSection(id: "recommendation-\(recommendation.id.rawValue)", title: title, items: items)
+        }
+    }
+}
+
 // MARK: - Search
 
 struct SearchView: View {
@@ -112,6 +186,7 @@ struct SearchView: View {
     @State private var errorMessage: String?
     @State private var path: [SearchDestination] = []
     @State private var isAuthorized = MusicAuthorization.currentStatus == .authorized
+    @State private var browse: [BrowseSection] = []
 
     private var player: Player { Player(device: device) { dismiss() } }
 
@@ -134,8 +209,10 @@ struct SearchView: View {
                     } actions: {
                         Button("Try Again") { Task { await search(debounce: false) } }
                     }
-                } else if query.isEmpty {
+                } else if query.isEmpty, browse.isEmpty {
                     ContentUnavailableView("Search Apple Music", systemImage: "magnifyingglass", description: Text("Plays on \(device.displayName)."))
+                } else if query.isEmpty {
+                    browseSections
                 } else if results.isEmpty, !isSearching {
                     ContentUnavailableView.search(text: query)
                 } else {
@@ -163,11 +240,27 @@ struct SearchView: View {
                 }
             }
             .task(id: query) { await search() }
-            .task { await requestAccess() }
+            .task {
+                await requestAccess()
+                await loadBrowse()
+            }
         }
         #if os(macOS)
         .frame(minWidth: 460, minHeight: 520)
         #endif
+    }
+
+    @ViewBuilder
+    private var browseSections: some View {
+        ForEach(browse) { section in
+            Section(section.title) {
+                ForEach(section.items) { item in
+                    NavigationLink(value: item.destination) {
+                        ItemRow(title: item.title, subtitle: item.subtitle, artwork: item.artwork, round: false)
+                    }
+                }
+            }
+        }
     }
 
     @ViewBuilder
@@ -231,6 +324,11 @@ struct SearchView: View {
         } else {
             isAuthorized = MusicAuthorization.currentStatus == .authorized
         }
+    }
+
+    private func loadBrowse() async {
+        guard isAuthorized, browse.isEmpty else { return }
+        browse = await BrowseLoader.sections()
     }
 
     private func search(debounce: Bool = true) async {

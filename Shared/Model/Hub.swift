@@ -23,9 +23,13 @@ protocol MessageTransport: AnyObject {
     var onDisconnect: ((UUID) -> Void)? { get set }
     var onMessage: ((Envelope, UUID) -> Void)? { get set }
     func send(_ message: Envelope, to peer: UUID, lane: Lane)
+    /// Higher wins when a device is reachable over more than one link.
+    func priority(of peer: UUID) -> Int
 }
 
 extension MessageTransport {
+    func priority(of peer: UUID) -> Int { 0 }
+
     func send(_ message: Envelope, to peer: UUID) {
         send(message, to: peer, lane: .control)
     }
@@ -233,6 +237,7 @@ final class Hub {
     func transfer(from source: RemoteDevice, to target: RemoteDevice) {
         guard store.transfer == nil, source.state.hasTrack, source.isControllable, target.isControllable else { return }
         let track = source.state.track
+        let (shuffle, repeatMode) = (source.state.shuffle, source.state.repeatMode)
         let status = TransferStatus(targetName: target.displayName)
         withAnimation {
             store.transfer = status
@@ -242,8 +247,7 @@ final class Hub {
         target.expectPlayback(of: track)
 
         Task {
-            let mobile: Set<DeviceKind> = [.iPhone, .iPad]
-            let upcoming = mobile.contains(source.info.kind) && mobile.contains(target.info.kind) ? await upcomingTracks(of: source) : []
+            let upcoming = await upcomingTracks(of: source)
             target.send(.loadTrack(track, at: source.state.elapsed(at: .now), upcoming: upcoming))
 
             let loadDeadline = ContinuousClock.now + .seconds(6)
@@ -266,6 +270,8 @@ final class Hub {
             let started = reported.isPlaying && TrackMatcher.sameSong(reported.title, track.title)
 
             if started {
+                if let shuffle { target.send(.setShuffle(shuffle)) }
+                if let repeatMode { target.send(.setRepeat(repeatMode)) }
                 source.send(.release)
                 withAnimation { store.transfer = nil }
             } else {
@@ -311,7 +317,7 @@ final class Hub {
     }
 
     private func activeLink(for id: String) -> UUID? {
-        links[id]?.first { linkStates[$0]?.key != nil }
+        links[id]?.filter { linkStates[$0]?.key != nil }.max { transport.priority(of: $0) < transport.priority(of: $1) }
     }
 
     private func sendSecure(_ message: Message, to link: UUID, lane: Lane = .control) {

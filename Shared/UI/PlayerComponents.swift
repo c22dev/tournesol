@@ -6,6 +6,9 @@
 //
 
 import SwiftUI
+#if os(iOS)
+import AVKit
+#endif
 
 extension RGB {
     func mixed(with other: RGB, _ amount: Double) -> RGB {
@@ -276,11 +279,53 @@ struct OutputRouteLabel: View {
     let device: RemoteDevice
 
     var body: some View {
+        if let outputs = device.state.airPlay, !outputs.isEmpty {
+            Menu {
+                ForEach(outputs) { output in
+                    Button {
+                        device.send(.setAirPlay([output.id]))
+                    } label: {
+                        Label(output.name, systemImage: output.isSelected ? "checkmark" : output.symbol)
+                    }
+                }
+                if outputs.count == 1 {
+                    Divider()
+                    Text("No other outputs found")
+                }
+            } label: {
+                label
+            }
+            .menuStyle(.button)
+            .menuIndicator(.hidden)
+            .buttonStyle(.plain)
+            .fixedSize()
+            .help("Choose where Music plays")
+        } else {
+            #if os(iOS)
+            if device.isLocal {
+                HStack(spacing: 8) {
+                    label
+                    SystemRoutePicker()
+                        .frame(width: 30, height: 30)
+                }
+            } else {
+                label
+            }
+            #else
+            label
+            #endif
+        }
+    }
+
+    private var label: some View {
         let output = device.state.output
-        HStack(spacing: 6) {
+        return HStack(spacing: 6) {
             Image(systemName: output?.symbol ?? device.info.kind.symbol)
                 .foregroundStyle(output.map { $0.kind == .builtIn } ?? true ? Color.white.opacity(0.6) : device.accent.accent.color)
             Text(output.map { $0.kind == .builtIn ? "\(device.info.kind.displayName) Speakers" : $0.name } ?? device.displayName)
+            if device.state.airPlay?.isEmpty == false {
+                Image(systemName: "chevron.up.chevron.down").font(.caption2)
+            }
         }
         .font(.footnote.weight(.semibold))
         .foregroundStyle(.white.opacity(0.6))
@@ -599,3 +644,101 @@ struct TransferButton: View {
         .accessibilityLabel("Move Playback")
     }
 }
+
+struct PlaybackOptions: View {
+    let device: RemoteDevice
+
+    var body: some View {
+        let state = device.state
+        HStack {
+            if let shuffle = state.shuffle {
+                OptionButton(symbol: "shuffle", isOn: shuffle, accent: device.accent.accent.color, label: "Shuffle") {
+                    device.send(.setShuffle(!shuffle))
+                }
+                .disabled(!state.hasTrack)
+                .opacity(state.hasTrack ? 1 : 0.35)
+            }
+            Spacer()
+            if let mode = state.repeatMode {
+                OptionButton(symbol: mode == .one ? "repeat.1" : "repeat", isOn: mode != .off, accent: device.accent.accent.color, label: "Repeat") {
+                    device.send(.setRepeat(mode.next))
+                }
+                .accessibilityValue(mode.rawValue.capitalized)
+                .disabled(!state.hasTrack)
+                .opacity(state.hasTrack ? 1 : 0.35)
+            }
+        }
+        .padding(.horizontal, 6)
+    }
+}
+
+private struct OptionButton: View {
+    let symbol: String
+    let isOn: Bool
+    let accent: Color
+    let label: String
+    let action: () -> Void
+    @State private var taps = 0
+
+    var body: some View {
+        Button {
+            taps += 1
+            action()
+        } label: {
+            Image(systemName: symbol)
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(isOn ? accent : .white.opacity(0.55))
+                .frame(width: 44, height: 36)
+                .background(isOn ? accent.opacity(0.18) : .clear, in: .capsule)
+                .contentShape(.capsule)
+        }
+        .buttonStyle(PressableStyle())
+        .sensoryFeedback(.selection, trigger: taps)
+        .animation(.smooth(duration: 0.2), value: isOn)
+        .help(label)
+        .accessibilityLabel(label)
+        .accessibilityAddTraits(isOn ? .isSelected : [])
+    }
+}
+
+struct LikeButton: View {
+    let device: RemoteDevice
+    @State private var taps = 0
+
+    var body: some View {
+        if let liked = device.state.isLiked, device.state.hasTrack {
+            Button {
+                taps += 1
+                device.send(.setLiked(!liked))
+            } label: {
+                Image(systemName: liked ? "heart.fill" : "heart")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(liked ? Color.pink : .white)
+                    .contentTransition(.symbolEffect(.replace))
+                    .frame(width: 42, height: 42)
+                    .contentShape(.circle)
+            }
+            .buttonStyle(.plain)
+            .glassEffect(.regular.interactive(), in: .circle)
+            .symbolEffect(.bounce, value: taps)
+            .sensoryFeedback(.impact(weight: .light), trigger: taps)
+            .help(liked ? "Remove from Favorites" : "Add to Favorites")
+            .accessibilityLabel(liked ? "Unfavorite" : "Favorite")
+        }
+    }
+}
+
+#if os(iOS)
+/// The system's own output button. It can only change where this phone plays, never another device's.
+struct SystemRoutePicker: UIViewRepresentable {
+    func makeUIView(context: Context) -> AVRoutePickerView {
+        let picker = AVRoutePickerView()
+        picker.tintColor = UIColor.white.withAlphaComponent(0.6)
+        picker.activeTintColor = .white
+        picker.prioritizesVideoDevices = false
+        return picker
+    }
+
+    func updateUIView(_ picker: AVRoutePickerView, context: Context) {}
+}
+#endif
