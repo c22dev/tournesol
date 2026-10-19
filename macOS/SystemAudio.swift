@@ -76,7 +76,7 @@ final class SystemAudio {
         onChange?()
     }
 
-    private static func defaultOutputDevice() -> AudioObjectID {
+    static func defaultOutputDevice() -> AudioObjectID {
         var address = address(kAudioHardwarePropertyDefaultOutputDevice)
         var id = AudioObjectID(kAudioObjectUnknown)
         var size = UInt32(MemoryLayout<AudioObjectID>.size)
@@ -94,5 +94,43 @@ final class SystemAudio {
 
     private static func address(_ selector: AudioObjectPropertySelector) -> AudioObjectPropertyAddress {
         AudioObjectPropertyAddress(mSelector: selector, mScope: kAudioObjectPropertyScopeGlobal, mElement: kAudioObjectPropertyElementMain)
+    }
+}
+
+enum OutputLatency {
+    /// Names the current output, so what tuning learns about it is kept apart from other outputs.
+    static var route: String {
+        var address = AudioObjectPropertyAddress(mSelector: kAudioDevicePropertyDeviceUID, mScope: kAudioObjectPropertyScopeGlobal, mElement: kAudioObjectPropertyElementMain)
+        var uid: Unmanaged<CFString>?
+        var size = UInt32(MemoryLayout<Unmanaged<CFString>?>.size)
+        guard AudioObjectGetPropertyData(SystemAudio.defaultOutputDevice(), &address, 0, nil, &size, &uid) == noErr, let uid else { return "default" }
+        return uid.takeRetainedValue() as String
+    }
+
+    /// How long sound takes to come out of this Mac's current output, as CoreAudio reports it.
+    static var current: TimeInterval {
+        let device = SystemAudio.defaultOutputDevice()
+        func frames(_ selector: AudioObjectPropertySelector, of object: AudioObjectID, scope: AudioObjectPropertyScope) -> UInt32 {
+            var address = AudioObjectPropertyAddress(mSelector: selector, mScope: scope, mElement: kAudioObjectPropertyElementMain)
+            var value = UInt32(0)
+            var size = UInt32(MemoryLayout<UInt32>.size)
+            return AudioObjectGetPropertyData(object, &address, 0, nil, &size, &value) == noErr ? value : 0
+        }
+        var rateAddress = AudioObjectPropertyAddress(mSelector: kAudioDevicePropertyNominalSampleRate, mScope: kAudioObjectPropertyScopeGlobal, mElement: kAudioObjectPropertyElementMain)
+        var rate = Float64(0)
+        var size = UInt32(MemoryLayout<Float64>.size)
+        guard AudioObjectGetPropertyData(device, &rateAddress, 0, nil, &size, &rate) == noErr, rate > 0 else { return 0 }
+
+        var total = frames(kAudioDevicePropertyLatency, of: device, scope: kAudioDevicePropertyScopeOutput)
+            + frames(kAudioDevicePropertySafetyOffset, of: device, scope: kAudioDevicePropertyScopeOutput)
+        var streamsAddress = AudioObjectPropertyAddress(mSelector: kAudioDevicePropertyStreams, mScope: kAudioDevicePropertyScopeOutput, mElement: kAudioObjectPropertyElementMain)
+        var streamsSize = UInt32(0)
+        if AudioObjectGetPropertyDataSize(device, &streamsAddress, 0, nil, &streamsSize) == noErr, streamsSize > 0 {
+            var streams = [AudioStreamID](repeating: 0, count: Int(streamsSize) / MemoryLayout<AudioStreamID>.size)
+            if AudioObjectGetPropertyData(device, &streamsAddress, 0, nil, &streamsSize, &streams) == noErr, let stream = streams.first {
+                total += frames(kAudioStreamPropertyLatency, of: stream, scope: kAudioObjectPropertyScopeGlobal)
+            }
+        }
+        return Double(total) / rate
     }
 }

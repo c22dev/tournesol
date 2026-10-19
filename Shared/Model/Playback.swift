@@ -195,10 +195,76 @@ nonisolated enum Command: Codable, Sendable {
     case release
 }
 
+nonisolated struct JamMember: Codable, Equatable, Identifiable, Sendable {
+    var id: String
+    var name: String
+    var kind: DeviceKind
+    /// Whether this device plays the music too, or only takes part as a remote.
+    var plays: Bool
+    var isGuest: Bool
+}
+
+/// What a device hosting a Jam tells everyone nearby, paired or not.
+nonisolated struct JamAdvert: Codable, Equatable, Sendable {
+    var id: UUID
+    var hostName: String
+}
+
+/// What a Jam leader tells its members about the session and what's playing.
+nonisolated struct JamState: Codable, Equatable, Sendable {
+    var id: UUID
+    var leaderID: String
+    var members: [JamMember]
+    var track: TrackReference?
+    var isPlaying: Bool
+    var position: TimeInterval
+    /// The leader's clock when `position` was read.
+    var sentAt: Date
+    var upcoming: [TrackReference]
+    /// How long the leader's sound takes to come out of its speakers, headphones or AirPods.
+    var leaderLatency: TimeInterval
+}
+
+nonisolated enum JamMessage: Codable, Sendable {
+    case invite(JamState)
+    case join(UUID, plays: Bool)
+    case setPlays(UUID, member: String, plays: Bool)
+    case leave(UUID)
+    case end(UUID)
+    case state(JamState)
+    case ping(UInt64, sentAt: Date)
+    case pong(UInt64, sentAt: Date, remote: Date)
+    /// How far a member's sound is from the leader's, in seconds (positive means ahead).
+    case report(UUID, drift: TimeInterval)
+    case tune(UUID, TuneStep)
+    /// What tuning by ear found: this device's sound comes out that much later than its output says.
+    case trim(UUID, by: TimeInterval)
+}
+
+/// Tuning by ear asks the other devices to go quiet one at a time, so a single microphone can hear each on its own.
+nonisolated enum TuneStep: Codable, Sendable, Equatable {
+    case quiet
+    case play
+    /// Only for the leader: go back so the tuning device can hear the same passage again.
+    case rewind(to: TimeInterval)
+    case done
+}
+
+/// Sent before two devices trust each other, to let someone into a Jam without pairing.
+nonisolated enum GuestMessage: Codable, Sendable {
+    /// The host asks a nearby device to join.
+    case invite(JamAdvert)
+    /// A nearby device asks the host to let it in.
+    case request(UUID)
+    case accept(UUID)
+    case decline(UUID)
+}
+
 nonisolated struct Hello: Codable, Sendable {
     var info: DeviceInfo
     var publicKey: Data
     var nonce: Data
+    var jam: JamAdvert?
 }
 
 nonisolated enum PairingMessage: Codable, Sendable {
@@ -212,6 +278,7 @@ nonisolated enum Envelope: Codable, Sendable {
     case hello(Hello)
     case pairing(PairingMessage)
     case sealed(sequence: UInt64, box: Data)
+    case guest(GuestMessage)
 }
 
 nonisolated enum Message: Codable, Sendable {
@@ -224,6 +291,7 @@ nonisolated enum Message: Codable, Sendable {
     case pushTokens(PushTokens)
     case requestQueue
     case queue([TrackReference])
+    case jam(JamMessage)
 }
 
 nonisolated struct PushTokens: Codable, Equatable, Sendable {

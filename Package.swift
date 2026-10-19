@@ -6,7 +6,7 @@ let package = Package(
     name: "TournesolCore",
     platforms: [.macOS(.v15), .iOS(.v18)],
     targets: [
-        .target(name: "TournesolCore", path: "Shared", sources: ["Model/Playback.swift", "Util/TrackMatcher.swift", "Util/NativeQueue.swift"]),
+        .target(name: "TournesolCore", path: "Shared", sources: ["Model/Playback.swift", "Util/TrackMatcher.swift", "Util/NativeQueue.swift", "Util/JamSync.swift", "Util/AudioAlignment.swift"]),
         .testTarget(name: "TournesolCoreTests", dependencies: ["TournesolCore"], path: "Tests/TournesolCoreTests"),
     ]
 )

@@ -6,7 +6,10 @@
 //
 
 import CryptoKit
+import OSLog
 import SwiftUI
+
+nonisolated private let hubLog = Logger(subsystem: "ch.cclerc.Tournesol", category: "Hub")
 
 protocol LocalPlayer: AnyObject {
     var state: PlaybackState { get }
@@ -18,17 +21,25 @@ protocol LocalPlayer: AnyObject {
     func upcomingTracks() async -> [TrackReference]
 }
 
+nonisolated enum Medium: Sendable {
+    case bluetooth, wifi
+}
+
 protocol MessageTransport: AnyObject {
     var onConnect: ((UUID) -> Void)? { get set }
     var onDisconnect: ((UUID) -> Void)? { get set }
     var onMessage: ((Envelope, UUID) -> Void)? { get set }
     func send(_ message: Envelope, to peer: UUID, lane: Lane)
-    /// Higher wins when a device is reachable over more than one link.
+    /// Higher wins when a device is reachable over more than one link. Bluetooth is preferred: it costs the least power.
     func priority(of peer: UUID) -> Int
+    func medium(of peer: UUID) -> Medium
 }
 
 extension MessageTransport {
-    func priority(of peer: UUID) -> Int { 0 }
+    func priority(of peer: UUID) -> Int { 1 }
+    func medium(of peer: UUID) -> Medium { .bluetooth }
+    /// Wi-Fi is only kept up while something needs it.
+    func setWiFiEnabled(_ enabled: Bool) {}
 
     func send(_ message: Envelope, to peer: UUID) {
         send(message, to: peer, lane: .control)
@@ -108,6 +119,11 @@ final class Hub {
     private var localFocus: String?
     private var preparedSignatures: [String: String] = [:]
     private var pendingQueues: [String: [TrackReference]] = [:]
+    private var jam: JamCoordinator!
+    /// The Jam this device hosts, announced to everyone nearby in each hello.
+    private var localAdvert: JamAdvert?
+    /// A Jam this device asked to join as a guest, and whether it wants to play there.
+    private var guestRequest: (id: UUID, playsHere: Bool)?
 
     init(info: DeviceInfo, player: LocalPlayer, transport: MessageTransport, pollInterval: Duration? = nil) {
         self.player = player
@@ -121,12 +137,31 @@ final class Hub {
         store.onPair = { [weak self] in self?.pair(with: $0) }
         store.onForget = { [weak self] in self?.forget($0) }
         store.onTransfer = { [weak self] in self?.transfer(from: $0, to: $1) }
+        let links = JamLinks(
+            send: { [weak self] message, id in self?.sendSecure(.jam(message), toDevice: id, fast: true) ?? false },
+            advertise: { [weak self] in self?.advertise($0) },
+            inviteGuest: { [weak self] in self?.inviteGuest($0) },
+            askToJoin: { [weak self] in self?.askToJoin($0, playsHere: $1) },
+            dismissGuest: { [weak self] in self?.dismissGuest($0) }
+        )
+        jam = JamCoordinator(local: local, player: player, store: store, links: links)
+        store.onStartJam = { [jam] in jam?.start() }
+        store.onLeaveJam = { [jam] in jam?.leave() }
+        store.onInviteToJam = { [jam] in jam?.invite($0) }
+        store.onJoinJam = { [jam] in jam?.join($0, playsHere: $1) }
+        store.onSetJamPlays = { [jam] in jam?.setPlays($0, $1) }
+        store.onPlayOnAll = { [jam] in jam?.playOnAll($0) }
+        #if os(macOS)
+        store.onTuneJam = { [jam] in await jam?.tuneByEar() ?? "" }
+        #endif
 
         player.onChange = { [weak self] in self?.localDidChange() }
         transport.onConnect = { [weak self] in self?.linkConnected($0) }
         transport.onDisconnect = { [weak self] in self?.linkDisconnected($0) }
         transport.onMessage = { [weak self] in self?.receive($0, from: $1) }
         localDidChange()
+        observeJam()
+        updateDiscovery()
 
         if let pollInterval {
             pollTask = Task { [weak self] in
@@ -147,7 +182,7 @@ final class Hub {
     func rename(_ name: String) {
         local.info.name = name
         for (link, state) in linkStates {
-            transport.send(.hello(Hello(info: local.info, publicKey: security.publicKey, nonce: state.nonce)), to: link)
+            transport.send(.hello(Hello(info: local.info, publicKey: security.publicKey, nonce: state.nonce, jam: localAdvert)), to: link)
         }
     }
 
@@ -175,14 +210,71 @@ final class Hub {
     private func updateDiscovery() {
         let missing = security.trusted.keys.contains { store.device(id: $0)?.isConnected != true }
         transport.setScanning(wantsDiscovery || missing)
+        updateWiFi()
     }
 
+    private var wifiOn = false
+    private var wifiTarget: Bool?
+    private var wifiTask: Task<Void, Never>?
+
+    /// Wi-Fi costs far more power than Bluetooth, so it is only up for a Jam, for a device Bluetooth can't reach,
+    /// or while the app is in front and a paired device hasn't shown up over Bluetooth.
+    private func wifiWanted() -> (wanted: Bool, urgent: Bool) {
+        let jamActive = store.jam != nil || localAdvert != nil
+        let onlyWiFi = store.remotes.contains { device in
+            let open = (links[device.id] ?? []).filter { linkStates[$0] != nil }
+            return !open.isEmpty && open.allSatisfy { transport.medium(of: $0) == .wifi }
+        }
+        let missing = security.trusted.keys.contains { store.device(id: $0)?.isConnected != true }
+        let urgent = jamActive || onlyWiFi
+        return (urgent || (missing && wantsDiscovery), urgent)
+    }
+
+    private func updateWiFi() {
+        let (wanted, urgent) = wifiWanted()
+        if wanted == wifiOn {
+            wifiTask?.cancel()
+            wifiTask = nil
+            wifiTarget = nil
+            return
+        }
+        guard wifiTarget != wanted else { return }
+        wifiTask?.cancel()
+        wifiTarget = wanted
+        // let Bluetooth connect first; and don't flap at the edge of its range
+        let delay: Duration = wanted ? (urgent ? .zero : .seconds(8)) : .seconds(60)
+        wifiTask = Task { [weak self] in
+            try? await Task.sleep(for: delay)
+            guard !Task.isCancelled, let self, wifiWanted().wanted == wanted else { return }
+            wifiOn = wanted
+            wifiTarget = nil
+            wifiTask = nil
+            hubLog.info("Wi-Fi link \(wanted ? "on" : "off", privacy: .public)")
+            transport.setWiFiEnabled(wanted)
+        }
+    }
+
+    private func observeJam() {
+        withObservationTracking {
+            _ = store.jam
+        } onChange: { [weak self] in
+            Task { @MainActor in
+                self?.updateWiFi()
+                self?.observeJam()
+            }
+        }
+    }
+
+    /// Two links over the same medium to one device are one too many; one over each is deliberate.
     private func dropDuplicateLinks(of device: RemoteDevice) {
         guard local.id > device.id else { return }
         let keyed = (links[device.id] ?? []).filter { linkStates[$0]?.key != nil }
-        guard keyed.contains(where: { !transport.isInitiator($0) }) else { return }
-        for link in keyed where transport.isInitiator(link) {
-            transport.close(link)
+        for medium in [Medium.bluetooth, .wifi] {
+            let same = keyed.filter { transport.medium(of: $0) == medium }
+            guard same.contains(where: { !transport.isInitiator($0) }) else { continue }
+            for link in same where transport.isInitiator(link) {
+                transport.close(link)
+            }
         }
     }
 
@@ -247,6 +339,7 @@ final class Hub {
         target.expectPlayback(of: track)
 
         Task {
+            let began = ContinuousClock.now
             let upcoming = await upcomingTracks(of: source)
             target.send(.loadTrack(track, at: source.state.elapsed(at: .now), upcoming: upcoming))
 
@@ -255,9 +348,16 @@ final class Hub {
                 try? await Task.sleep(for: .milliseconds(50))
             }
 
+            let loadedAt = ContinuousClock.now
             let fade: TimeInterval = source.info.kind == .mac || source.info.kind == .macBook ? 0.3 : 0
             let position = source.state.elapsed(at: .now) + fade
             source.send(.handOff)
+            // the source lets go of the headphones before the target starts, or they jump back and forth
+            let settleDeadline = ContinuousClock.now + .milliseconds(1200)
+            while source.reportedState.isPlaying, ContinuousClock.now < settleDeadline {
+                try? await Task.sleep(for: .milliseconds(40))
+            }
+            let pausedAt = ContinuousClock.now
             target.send(.startLoaded(at: position))
 
             let startDeadline = ContinuousClock.now + .seconds(8)
@@ -268,6 +368,7 @@ final class Hub {
             }
             let reported = target.reportedState
             let started = reported.isPlaying && TrackMatcher.sameSong(reported.title, track.title)
+            hubLog.info("transfer: loaded \((loadedAt - began) / .milliseconds(1)) ms, source paused \((pausedAt - loadedAt) / .milliseconds(1)) ms later, target playing \((ContinuousClock.now - pausedAt) / .milliseconds(1)) ms later, started=\(started)")
 
             if started {
                 if let shuffle { target.send(.setShuffle(shuffle)) }
@@ -316,8 +417,21 @@ final class Hub {
         }
     }
 
-    private func activeLink(for id: String) -> UUID? {
-        links[id]?.filter { linkStates[$0]?.key != nil }.max { transport.priority(of: $0) < transport.priority(of: $1) }
+    /// Bluetooth unless `fast` asks for Wi-Fi, whose steadier timing Jam sync needs.
+    private func activeLink(for id: String, fast: Bool = false) -> UUID? {
+        let keyed = links[id]?.filter { linkStates[$0]?.key != nil } ?? []
+        let link = (fast ? keyed.first { transport.medium(of: $0) == .wifi } : nil)
+            ?? keyed.max { transport.priority(of: $0) < transport.priority(of: $1) }
+        if let link { noteMedium(of: id, link) }
+        return link
+    }
+
+    private var lastMedium: [String: Medium] = [:]
+
+    private func noteMedium(of id: String, _ link: UUID) {
+        let medium = transport.medium(of: link)
+        guard lastMedium.updateValue(medium, forKey: id) != medium else { return }
+        hubLog.info("\(id.prefix(8), privacy: .public) now over \(String(describing: medium), privacy: .public)")
     }
 
     private func sendSecure(_ message: Message, to link: UUID, lane: Lane = .control) {
@@ -328,9 +442,11 @@ final class Hub {
         transport.send(.sealed(sequence: state.sentSequence, box: box), to: link, lane: lane)
     }
 
-    private func sendSecure(_ message: Message, toDevice id: String) {
-        guard let link = activeLink(for: id) else { return }
+    @discardableResult
+    private func sendSecure(_ message: Message, toDevice id: String, fast: Bool = false) -> Bool {
+        guard let link = activeLink(for: id, fast: fast) else { return false }
         sendSecure(message, to: link)
+        return true
     }
 
     private func pollMobilePeers() {
@@ -355,7 +471,8 @@ final class Hub {
             artworkSongs[local.id] = nil
         }
         update(local, to: player.state)
-        for device in store.remotes {
+        jam?.localDidChange()
+        for device in store.devices where !device.isLocal && device.isPaired {
             if let link = activeLink(for: device.id) { push(to: link) }
         }
         pushLiveActivities()
@@ -436,7 +553,7 @@ final class Hub {
     private func linkConnected(_ link: UUID) {
         let state = Link()
         linkStates[link] = state
-        transport.send(.hello(Hello(info: local.info, publicKey: security.publicKey, nonce: state.nonce)), to: link)
+        transport.send(.hello(Hello(info: local.info, publicKey: security.publicKey, nonce: state.nonce, jam: localAdvert)), to: link)
     }
 
     private func linkDisconnected(_ link: UUID) {
@@ -453,6 +570,7 @@ final class Hub {
 
         links[device.id] = nil
         controllers[device.id] = nil
+        jam.deviceDisconnected(device.id)
         transport.resumeAll()
         updateDiscovery()
         removals[device.id] = Task { [weak self] in
@@ -471,6 +589,8 @@ final class Hub {
             register(hello, link: link)
         case .pairing(let message):
             handlePairing(message, from: link)
+        case .guest(let message):
+            handleGuest(message, from: link)
         case .sealed(let sequence, let box):
             guard let state = linkStates[link], let key = state.key, let hello = state.hello,
                   let message = SecureBox.open(box, sequence: sequence, senderNonce: hello.nonce, key: key),
@@ -482,6 +602,7 @@ final class Hub {
 
     private func handle(_ message: Message, from link: UUID) {
         guard let device = owners[link] else { return }
+        guard device.access == .full || Self.guestMayDo(message, as: device.access) else { return }
         switch message {
         case .state(let state):
             device.stateRevision += 1
@@ -509,12 +630,104 @@ final class Hub {
             }
         case .queue(let upcoming):
             pendingQueues[device.id] = upcoming
+        case .jam(let message):
+            jam.receive(message, from: device.id)
         case .pushTokens(let tokens):
             peerTokens[device.id] = tokens
             savePeerTokens()
         case .controllerFocus(let target):
             controllers[device.id] = target
             controllerActivity[device.id] = target == nil ? nil : .now
+        }
+    }
+
+    /// A guest can follow the Jam and add songs to it. It can't control the leader or be controlled.
+    private static func guestMayDo(_ message: Message, as access: RemoteDevice.Access) -> Bool {
+        switch message {
+        case .state, .artwork, .jam, .requestState, .requestQueue, .queue:
+            return true
+        case .command(.enqueue), .command(.enqueueAll):
+            return access == .guestMember
+        default:
+            return false
+        }
+    }
+
+    // MARK: Jam guests
+
+    private func advertise(_ advert: JamAdvert?) {
+        localAdvert = advert
+        updateWiFi()
+        for (link, state) in linkStates {
+            transport.send(.hello(Hello(info: local.info, publicKey: security.publicKey, nonce: state.nonce, jam: advert)), to: link)
+        }
+    }
+
+    private func inviteGuest(_ device: RemoteDevice) {
+        guard let advert = localAdvert, let link = links[device.id]?.first else { return }
+        transport.send(.guest(.invite(advert)), to: link)
+    }
+
+    private func askToJoin(_ host: RemoteDevice, playsHere: Bool) {
+        guard let advert = host.jamAdvert, let link = links[host.id]?.first else { return }
+        guestRequest = (advert.id, playsHere)
+        transport.send(.guest(.request(advert.id)), to: link)
+    }
+
+    /// Trusts a device for the Jam only. Both sides do this, then talk like paired devices within the guest's limits.
+    private func admitGuest(_ device: RemoteDevice, hello: Hello, link: UUID, as access: RemoteDevice.Access) {
+        security.admitGuest(hello)
+        device.access = access
+        for candidate in links[device.id] ?? [] where linkStates[candidate]?.hello?.publicKey == hello.publicKey {
+            establish(candidate)
+        }
+    }
+
+    private func dismissGuest(_ id: String) {
+        security.dismissGuest(id)
+        guard let device = store.device(id: id), device.access != .full else { return }
+        markUnpaired(device)
+        device.access = .full
+    }
+
+    private func handleGuest(_ message: GuestMessage, from link: UUID) {
+        guard let device = owners[link], let hello = linkStates[link]?.hello, !security.isTrusted(hello) else { return }
+        switch message {
+        case .invite(let advert):
+            guard store.jam == nil else { return transport.send(.guest(.decline(advert.id)), to: link) }
+            let prompt = JamPrompt(kind: .invite, deviceName: device.info.name, deviceSymbol: device.info.kind.symbol, isGuest: true)
+            prompt.respond = { [weak self] accepted, plays in
+                guard let self else { return }
+                store.jamPrompt = nil
+                guard accepted else { return transport.send(.guest(.decline(advert.id)), to: link) }
+                jam.expectInvite(to: advert.id, playsHere: plays)
+                admitGuest(device, hello: hello, link: link, as: .guestHost)
+                transport.send(.guest(.accept(advert.id)), to: link)
+            }
+            store.jamPrompt = prompt
+        case .request(let id):
+            guard localAdvert?.id == id else { return transport.send(.guest(.decline(id)), to: link) }
+            let prompt = JamPrompt(kind: .request, deviceName: device.info.name, deviceSymbol: device.info.kind.symbol, isGuest: true)
+            prompt.respond = { [weak self] accepted, _ in
+                guard let self else { return }
+                store.jamPrompt = nil
+                guard accepted else { return transport.send(.guest(.decline(id)), to: link) }
+                admitGuest(device, hello: hello, link: link, as: .guestMember)
+                transport.send(.guest(.accept(id)), to: link)
+                jam.invite(device)
+            }
+            store.jamPrompt = prompt
+        case .accept(let id):
+            if localAdvert?.id == id {
+                admitGuest(device, hello: hello, link: link, as: .guestMember)
+                jam.invite(device)
+            } else if let request = guestRequest, request.id == id {
+                guestRequest = nil
+                jam.expectInvite(to: id, playsHere: request.playsHere)
+                admitGuest(device, hello: hello, link: link, as: .guestHost)
+            }
+        case .decline(let id):
+            if guestRequest?.id == id { guestRequest = nil }
         }
     }
 
@@ -528,7 +741,7 @@ final class Hub {
             linkStates[link]?.recentlyReceived = []
             linkStates[link]?.sentState = nil
             linkStates[link]?.sentArtworkID = nil
-            transport.send(.hello(Hello(info: local.info, publicKey: security.publicKey, nonce: ourNonce)), to: link)
+            transport.send(.hello(Hello(info: local.info, publicKey: security.publicKey, nonce: ourNonce, jam: localAdvert)), to: link)
         }
         linkStates[link]?.hello = hello
 
@@ -551,7 +764,11 @@ final class Hub {
             links[info.id, default: []].append(link)
         }
 
+        device.jamAdvert = hello.jam
         if security.isTrusted(hello) {
+            device.access = .full
+            establish(link)
+        } else if security.isGuest(hello), device.access != .full {
             establish(link)
         } else {
             device.isPaired = false
@@ -566,15 +783,16 @@ final class Hub {
         withAnimation { device.isPaired = true }
         if activeLink(for: device.id) == link {
             push(to: link, force: true)
-            if let localFocus {
+            if device.access == .full, let localFocus {
                 sendSecure(.controllerFocus(target: localFocus), to: link)
             }
-            if let localTokens {
+            if device.access == .full, let localTokens {
                 sendSecure(.pushTokens(localTokens), to: link)
             }
         }
         dropDuplicateLinks(of: device)
         updateDiscovery()
+        jam.deviceConnected(device)
     }
 
     private func markUnpaired(_ device: RemoteDevice) {
