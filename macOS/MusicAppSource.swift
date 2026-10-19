@@ -29,6 +29,20 @@ final class MusicAppSource: LocalPlayer {
     private var holdTask: Task<Void, Never>?
     private var otherAppIsNowPlaying = false
 
+    /// Every update from the system's now-playing stream, whichever app it is about.
+    var onStreamUpdate: ((NowPlayingStream.Info) -> Void)?
+
+    /// While another player is the one in use, Music only listens to the stream and runs no scripts of its own.
+    var isPassive = false {
+        didSet {
+            guard oldValue != isPassive, !isPassive else { return }
+            Task { [weak self] in
+                await self?.pollMusic()
+                await self?.refreshSettings()
+            }
+        }
+    }
+
     init() {
         audio.onChange = { [weak self] in self?.publish() }
         nowPlaying.onUpdate = { [weak self] info in
@@ -46,6 +60,7 @@ final class MusicAppSource: LocalPlayer {
         fallbackTask = Task { [weak self] in
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(3))
+                guard self?.isPassive == false else { continue }
                 await self?.pollMusicIfNeeded()
                 await self?.refreshPlaylistQueue()
                 await self?.refreshSettings()
@@ -54,6 +69,7 @@ final class MusicAppSource: LocalPlayer {
         advanceTask = Task { [weak self] in
             while !Task.isCancelled {
                 try? await Task.sleep(for: .milliseconds(400))
+                guard self?.isPassive == false else { continue }
                 self?.advanceIfFinished()
             }
         }
@@ -144,10 +160,12 @@ final class MusicAppSource: LocalPlayer {
             streamArtwork[signature] = thumbnail
         }
         info.artwork = nil
+        onStreamUpdate?(info)
 
         guard info.client == "com.apple.Music" || info.client.isEmpty else {
             otherAppIsNowPlaying = true
-            Task { await pollMusic() }
+            // Music's own state is stale now, unless it's the one not in use
+            if !isPassive { Task { await pollMusic() } }
             return
         }
         otherAppIsNowPlaying = false

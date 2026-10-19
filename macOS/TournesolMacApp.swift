@@ -176,6 +176,7 @@ enum LoginItem {
 final class AppModel {
     static let shared = AppModel()
     let hub: Hub
+    let cider: CiderSource
     let mediaKeys: MediaKeyController
     let nowPlaying: NowPlayingBridge
     private var pairingPanel: NSPanel?
@@ -184,7 +185,12 @@ final class AppModel {
     private init() {
         let info = DeviceInfo.current
         let transport = CompositeTransport([BLEPeripheral(localName: info.name), BLECentral(), LANTransport(localID: info.id, activationNotifications: [NSApplication.didBecomeActiveNotification])])
-        hub = Hub(info: info, player: MusicAppSource(), transport: transport, pollInterval: .seconds(15))
+        let player = MacPlayer()
+        cider = player.cider
+        hub = Hub(info: info, player: player, transport: transport, pollInterval: .seconds(15))
+        #if DEBUG
+        if UserDefaults.standard.bool(forKey: "jamSelfTest") { Task { [hub] in await JamSelfTest.run(hub: hub) } }
+        #endif
         mediaKeys = MediaKeyController(store: hub.store)
         nowPlaying = NowPlayingBridge(store: hub.store)
         observePairing()
@@ -252,3 +258,74 @@ extension DeviceInfo {
         }
     }
 }
+
+#if DEBUG
+import OSLog
+
+/// Starts a Jam with a connected iPhone and logs how well it stays in step. Launch with `-jamSelfTest YES`.
+/// This Mac plays a song muted; the phone plays it out loud.
+enum JamSelfTest {
+    private static let log = Logger(subsystem: "ch.cclerc.Tournesol", category: "JamTest")
+    private static func say(_ text: String) { log.info("JAMTEST \(text, privacy: .public)") }
+
+    private static func setMusicVolume(_ volume: Int) {
+        _ = NSAppleScript(source: "tell application \"Music\" to set sound volume to \(volume)")?.executeAndReturnError(nil)
+    }
+
+    static func run(hub: Hub) async {
+        let store = hub.store
+        var phone: RemoteDevice?
+        for _ in 0..<150 {
+            phone = store.remotes.first { $0.isConnected && $0.info.kind == .iPhone }
+            if phone != nil { break }
+            try? await Task.sleep(for: .seconds(1))
+        }
+        guard let phone else { return say("no connected iPhone") }
+        say("found \(phone.info.name)")
+
+        setMusicVolume(0)
+        hub.local.send(.play)
+        for _ in 0..<40 where !hub.local.state.isPlaying { try? await Task.sleep(for: .milliseconds(500)) }
+        say("leader playing: \(hub.local.state.isPlaying), \(hub.local.state.title ?? "nil")")
+
+        store.onStartJam()
+        for _ in 0..<30 where store.jam?.members.contains(where: { $0.id == phone.id }) != true { try? await Task.sleep(for: .milliseconds(500)) }
+        say("joined as a remote: \(store.jam?.members.contains(where: { $0.id == phone.id }) == true), now asking it to play")
+        store.onSetJamPlays(phone.id, true)
+        let started = ContinuousClock.now
+        func seconds() -> Int { Int((ContinuousClock.now - started) / .seconds(1)) }
+        func report(_ label: String) {
+            let reported = store.jam?.drifts[phone.id].map { String(format: "%+.3f", $0) } ?? "none yet"
+            let now = Date.now
+            let independent = phone.state.isPlaying && hub.local.state.isPlaying
+                ? String(format: "%+.3f", phone.state.elapsed(at: now) - hub.local.state.elapsed(at: now)) : "n/a"
+            say("t=\(seconds()) \(label): phone \(phone.state.title ?? "nil") playing=\(phone.state.isPlaying) | member's own drift \(reported) s | independent diff \(independent) s | members \(store.jam?.members.count ?? 0)")
+        }
+        if UserDefaults.standard.bool(forKey: "jamTuneTest") {
+            setMusicVolume(30)
+            try? await Task.sleep(for: .seconds(12))
+            report("before tuning")
+            for round in 1...2 {
+                let result = await store.onTuneJam?() ?? "unavailable"
+                say("tune \(round): \(result.replacingOccurrences(of: "\n", with: " / "))")
+                try? await Task.sleep(for: .seconds(10))
+                report("after tune \(round)")
+            }
+            store.onLeaveJam()
+            hub.local.send(.pause)
+            return say("done, jam left: \(store.jam == nil)")
+        }
+        for step in 1...90 {
+            try? await Task.sleep(for: .seconds(1))
+            if step == 34 { hub.local.send(.pause); say("t=\(seconds()) leader paused") }
+            if step == 44 { report("after pause (expect phone paused)"); hub.local.send(.play); say("t=\(seconds()) leader resumed") }
+            if step == 62 { hub.local.send(.next); say("t=\(seconds()) leader skipped to the next song") }
+            if step % 5 == 0 { report("steady") }
+        }
+        store.onLeaveJam()
+        hub.local.send(.pause)
+        setMusicVolume(100)
+        say("done, jam left: \(store.jam == nil)")
+    }
+}
+#endif

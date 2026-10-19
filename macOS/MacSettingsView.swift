@@ -15,6 +15,7 @@ struct MacSettingsView: View {
     @State private var isTrusted = AXIsProcessTrusted()
     @AppStorage(NowPlayingBridge.enabledKey) private var nowPlayingEnabled = false
     @State private var opensAtLogin = LoginItem.isEnabled
+    @State private var ciderStatus = CiderSource.Status.notRunning
 
     var body: some View {
         Form {
@@ -33,7 +34,23 @@ struct MacSettingsView: View {
             } header: {
                 Text("Keyboard")
             } footer: {
-                Text("When This Mac is selected, media keys keep controlling Music as usual.")
+                Text("When This Mac is selected, media keys keep controlling Music or Cider as usual.")
+                    .foregroundStyle(.secondary)
+            }
+
+            Section {
+                LabeledContent("Status") {
+                    switch ciderStatus {
+                    case .connected: Label("Connected", systemImage: "checkmark.circle.fill").foregroundStyle(.green)
+                    case .waitingForApproval: Label("Waiting for you to allow it in Cider", systemImage: "hourglass").foregroundStyle(.orange)
+                    case .denied: Button("Connect…") { model.cider.authorize(userInitiated: true) }
+                    case .notRunning: Text("Cider is not running").foregroundStyle(.secondary)
+                    }
+                }
+            } header: {
+                Text("Cider")
+            } footer: {
+                Text("Tournesol controls whichever of Music or Cider is playing. The first time, Cider asks you to allow Tournesol.")
                     .foregroundStyle(.secondary)
             }
 
@@ -80,6 +97,7 @@ struct MacSettingsView: View {
         .task {
             while !Task.isCancelled {
                 isTrusted = AXIsProcessTrusted()
+                ciderStatus = model.cider.status
                 try? await Task.sleep(for: .seconds(1))
             }
         }

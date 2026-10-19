@@ -27,6 +27,12 @@ final class NowPlayingBridge {
     private var defaultsObserver: NSObjectProtocol?
     #if os(iOS)
     private let silence = SilentAudio()
+    #else
+    /// macOS reads "playing" as the Mac wanting the AirPods and asks for them. Right after a remote starts they are still on their way
+    /// to it, so the Mac only says "playing" once the remote has been playing for a few seconds.
+    private static let playingDelay: Duration = .seconds(3)
+    private var playingSince: ContinuousClock.Instant?
+    private var playingTask: Task<Void, Never>?
     #endif
 
     init(store: DeviceStore) {
@@ -47,6 +53,8 @@ final class NowPlayingBridge {
 
     private var candidate: RemoteDevice? {
         guard Self.isEnabled, let device = store.selected, !device.isLocal, device.isConnected, device.state.hasTrack else { return nil }
+        // A Jam that plays here has this device's own audio running, which the silent audio would only disturb.
+        if store.jam?.playsHere == true { return nil }
         #if os(iOS)
         if store.devices.contains(where: { $0.isLocal && $0.state.isPlaying }) { return nil }
         #endif
@@ -59,9 +67,15 @@ final class NowPlayingBridge {
             log.debug("mirroring \(device.info.name, privacy: .public)")
             mirrored = device
             publishedArtworkKey = nil
+            #if os(macOS)
+            playingSince = nil
+            #endif
             registerCommands()
         }
         Self.isMirroring = true
+        #if os(macOS)
+        trackPlaying(of: device)
+        #endif
         publish(device)
 
         #if os(iOS)
@@ -99,9 +113,28 @@ final class NowPlayingBridge {
         publishedArtworkKey = device.artworkKey
         center.nowPlayingInfo = info
         #if os(macOS)
-        center.playbackState = state.isPlaying ? .playing : .paused
+        let settled = playingSince.map { ContinuousClock.now - $0 >= Self.playingDelay } ?? false
+        center.playbackState = state.isPlaying && settled ? .playing : .paused
         #endif
     }
+
+    #if os(macOS)
+    private func trackPlaying(of device: RemoteDevice) {
+        guard device.state.isPlaying else {
+            playingSince = nil
+            playingTask?.cancel()
+            playingTask = nil
+            return
+        }
+        guard playingSince == nil else { return }
+        playingSince = .now
+        playingTask = Task { [weak self] in
+            try? await Task.sleep(for: Self.playingDelay)
+            guard !Task.isCancelled, let self, let device = mirrored else { return }
+            publish(device)
+        }
+    }
+    #endif
 
     private nonisolated static func artwork(for image: PlatformImage) -> MPMediaItemArtwork {
         MPMediaItemArtwork(boundsSize: image.size) { @Sendable _ in image }
@@ -145,6 +178,9 @@ final class NowPlayingBridge {
         center.nowPlayingInfo = nil
         #if os(macOS)
         center.playbackState = .stopped
+        playingSince = nil
+        playingTask?.cancel()
+        playingTask = nil
         #endif
         #if os(iOS)
         silence.stop()
