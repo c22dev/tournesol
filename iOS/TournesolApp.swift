@@ -50,6 +50,9 @@ final class AppModel {
         controls = ControlCenterSync(store: hub.store)
         nowPlaying = NowPlayingBridge(store: hub.store)
         hub.wantsDiscovery = UIApplication.shared.applicationState != .background
+        #if DEBUG
+        if UserDefaults.standard.bool(forKey: "jamSelfTest") { Task { [hub] in await JamSelfTest.run(hub: hub) } }
+        #endif
         lifecycle = [UIApplication.didBecomeActiveNotification, UIApplication.didEnterBackgroundNotification].map { name in
             NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { _ in
                 MainActor.assumeIsolated { hub.wantsDiscovery = name == UIApplication.didBecomeActiveNotification }
@@ -120,3 +123,52 @@ private struct SystemVolumeHost: UIViewRepresentable {
     func makeUIView(context: Context) -> MPVolumeView { VolumeService.shared.view }
     func updateUIView(_ uiView: MPVolumeView, context: Context) {}
 }
+
+#if DEBUG
+/// Starts a Jam led by this phone with a connected Mac and prints how well the Mac keeps in step. Launch with `-jamSelfTest YES`.
+enum JamSelfTest {
+    private static func say(_ text: String) {
+        print("JAMTEST \(text)")
+        fflush(stdout)
+    }
+
+    static func run(hub: Hub) async {
+        let store = hub.store
+        var mac: RemoteDevice?
+        for _ in 0..<150 {
+            mac = store.remotes.first { $0.isConnected && ($0.info.kind == .mac || $0.info.kind == .macBook) }
+            if mac != nil { break }
+            try? await Task.sleep(for: .seconds(1))
+        }
+        guard let mac else { return say("no connected Mac") }
+        say("found \(mac.info.name)")
+        hub.local.send(.play)
+        for _ in 0..<40 where !hub.local.state.isPlaying { try? await Task.sleep(for: .milliseconds(500)) }
+        say("leader playing: \(hub.local.state.isPlaying), \(hub.local.state.title ?? "nil")")
+
+        store.onStartJam()
+        for _ in 0..<30 where store.jam?.members.contains(where: { $0.id == mac.id }) != true { try? await Task.sleep(for: .milliseconds(500)) }
+        say("joined as a remote: \(store.jam?.members.contains(where: { $0.id == mac.id }) == true), now asking it to play")
+        store.onSetJamPlays(mac.id, true)
+        let started = ContinuousClock.now
+        func seconds() -> Int { Int((ContinuousClock.now - started) / .seconds(1)) }
+        func report(_ label: String) {
+            let reported = store.jam?.drifts[mac.id].map { String(format: "%+.3f", $0) } ?? "none yet"
+            let now = Date.now
+            let independent = mac.state.isPlaying && hub.local.state.isPlaying
+                ? String(format: "%+.3f", mac.state.elapsed(at: now) - hub.local.state.elapsed(at: now)) : "n/a"
+            say("t=\(seconds()) \(label): mac \(mac.state.title ?? "nil") playing=\(mac.state.isPlaying) | member's own drift \(reported) s | independent diff \(independent) s")
+        }
+        for step in 1...75 {
+            try? await Task.sleep(for: .seconds(1))
+            if step == 30 { hub.local.send(.pause); say("t=\(seconds()) leader paused") }
+            if step == 38 { report("after pause (expect mac paused)"); hub.local.send(.play); say("t=\(seconds()) leader resumed") }
+            if step == 52 { hub.local.send(.next); say("t=\(seconds()) leader skipped to the next song") }
+            if step % 5 == 0 { report("steady") }
+        }
+        store.onLeaveJam()
+        hub.local.send(.pause)
+        say("done, jam left: \(store.jam == nil)")
+    }
+}
+#endif

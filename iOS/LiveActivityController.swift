@@ -6,7 +6,10 @@
 //
 
 import ActivityKit
+import OSLog
 import UIKit
+
+private let log = Logger(subsystem: "ch.cclerc.Tournesol", category: "LiveActivity")
 
 final class LiveActivityController {
     private let store: DeviceStore
@@ -103,10 +106,17 @@ final class LiveActivityController {
             return
         }
 
-        guard UIApplication.shared.applicationState == .active, ActivityAuthorizationInfo().areActivitiesEnabled else { return }
+        guard UIApplication.shared.applicationState == .active, ActivityAuthorizationInfo().areActivitiesEnabled else {
+            log.error("not starting: active=\(UIApplication.shared.applicationState == .active) enabled=\(ActivityAuthorizationInfo().areActivitiesEnabled)")
+            return
+        }
         end()
         let attributes = RemoteActivityAttributes(deviceID: device.id, deviceName: device.info.name, deviceSymbol: device.info.kind.symbol)
-        activity = try? Activity.request(attributes: attributes, content: ActivityContent(state: content, staleDate: nil), pushType: .token)
+        do {
+            activity = try Activity.request(attributes: attributes, content: ActivityContent(state: content, staleDate: nil), pushType: .token)
+        } catch {
+            log.error("Activity.request failed: \(error.localizedDescription, privacy: .public)")
+        }
         lastContent = content
         if let activity { watchTokens(of: activity) }
     }

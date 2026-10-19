@@ -50,7 +50,7 @@ final class VolumeButtonForwarder {
     }
 
     private var target: RemoteDevice? {
-        guard let device = store.selected, !device.isLocal, device.isConnected, device.state.volume != nil else { return nil }
+        guard let device = store.selected, !device.isLocal, device.isConnected, device.state.volume != nil, store.jam?.playsHere != true else { return nil }
         return device
     }
 

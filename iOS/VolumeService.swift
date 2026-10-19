@@ -25,6 +25,7 @@ final class VolumeService {
     private let musicPlayer = MPMusicPlayerController.systemMusicPlayer
     private var lastReading: Float
     private var lastRouteChange = ContinuousClock.now - .seconds(10)
+    private var lastSessionChange = ContinuousClock.now - .seconds(10)
     private var ownChanges: [(value: Float, expires: ContinuousClock.Instant)] = []
     private var observation: NSKeyValueObservation?
     private var observers: [NSObjectProtocol] = []
@@ -39,9 +40,17 @@ final class VolumeService {
             guard let value = change.newValue else { return }
             Task { @MainActor in self?.handle(reading: value) }
         }
-        observers.append(NotificationCenter.default.addObserver(forName: AVAudioSession.routeChangeNotification, object: nil, queue: .main) { [weak self] _ in
+        observers.append(NotificationCenter.default.addObserver(forName: AVAudioSession.routeChangeNotification, object: nil, queue: .main) { [weak self] note in
+            let reason = (note.userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt).flatMap(AVAudioSession.RouteChangeReason.init(rawValue:))
+            let outputs = AVAudioSession.sharedInstance().currentRoute.outputs.map { "\($0.portName) [\($0.portType.rawValue)]" }.joined(separator: ", ")
+            log.info("route change \(String(describing: reason), privacy: .public) -> \(outputs, privacy: .public) category \(AVAudioSession.sharedInstance().category.rawValue, privacy: .public)")
             MainActor.assumeIsolated { self?.routeChanged() }
         })
+        observers += [AudioSessionQueue.willChange, AudioSessionQueue.didChange].map { name in
+            NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated { self?.sessionChanged() }
+            }
+        }
         observers += [UIApplication.didEnterBackgroundNotification, UIApplication.didBecomeActiveNotification].map { name in
             NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
                 MainActor.assumeIsolated {
@@ -68,6 +77,16 @@ final class VolumeService {
         }
     }
 
+    // a new category or activation changes which volume the session reports, and that isn't a button press
+    private func sessionChanged() {
+        lastSessionChange = .now
+        lastReading = read()
+        Task { [weak self] in
+            try? await Task.sleep(for: .seconds(1))
+            self?.onRouteChange?()
+        }
+    }
+
     func poll() {
         handle(reading: read())
     }
@@ -82,7 +101,7 @@ final class VolumeService {
 
     private func handle(reading: Float) {
         guard abs(reading - lastReading) > 0.001 else { return }
-        if ContinuousClock.now - lastRouteChange < .seconds(2) {
+        if ContinuousClock.now - max(lastRouteChange, lastSessionChange) < .seconds(2) {
             lastReading = reading
             current = Double(reading)
             return
@@ -142,5 +161,18 @@ final class VolumeService {
         var volume: Float = -1
         guard getter(controller, selector, &volume, "Audio/Video" as NSString).boolValue, (0...1).contains(volume) else { return nil }
         return volume
+    }
+}
+
+enum OutputLatency {
+    /// Names the current output, so what tuning learns about it is kept apart from other outputs.
+    static var route: String {
+        AVAudioSession.sharedInstance().currentRoute.outputs.first?.uid ?? "speaker"
+    }
+
+    /// How long sound takes to come out of whatever this device plays to: much longer on AirPods than on the speaker.
+    static var current: TimeInterval {
+        let session = AVAudioSession.sharedInstance()
+        return session.outputLatency + session.ioBufferDuration
     }
 }

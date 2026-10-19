@@ -17,8 +17,25 @@ nonisolated final class AudioSessionQueue: @unchecked Sendable {
     private var player: AVAudioPlayer?
     private var routeObserver: NSObjectProtocol?
 
-    func setActive(_ active: Bool) {
+    /// Posted on the main queue before and after the session's category or activation changes, so volume readings around it can be told apart from button presses.
+    static let willChange = Notification.Name("AudioSessionQueue.willChange")
+    static let didChange = Notification.Name("AudioSessionQueue.didChange")
+
+    /// Runs a session change on the queue, announcing it first so no reading made during it is taken for a button.
+    private func change(_ work: @escaping () -> Void) {
+        let announce = { (name: Notification.Name) in
+            if Thread.isMainThread { NotificationCenter.default.post(name: name, object: nil) }
+            else { DispatchQueue.main.async { NotificationCenter.default.post(name: name, object: nil) } }
+        }
+        announce(Self.willChange)
         queue.async {
+            work()
+            announce(Self.didChange)
+        }
+    }
+
+    func setActive(_ active: Bool) {
+        change {
             let session = AVAudioSession.sharedInstance()
             if active {
                 try? session.setActive(true)
@@ -29,7 +46,7 @@ nonisolated final class AudioSessionQueue: @unchecked Sendable {
     }
 
     func useAmbient(activate: Bool) {
-        queue.async {
+        change {
             let session = AVAudioSession.sharedInstance()
             try? session.setCategory(.ambient, options: .mixWithOthers)
             if activate { try? session.setActive(true) }
@@ -37,7 +54,7 @@ nonisolated final class AudioSessionQueue: @unchecked Sendable {
     }
 
     func startSilence(keepAirPodsFree: Bool, data: Data) {
-        queue.async { [self] in
+        change { [self] in
             let session = AVAudioSession.sharedInstance()
             do {
                 if keepAirPodsFree {
@@ -89,7 +106,7 @@ nonisolated final class AudioSessionQueue: @unchecked Sendable {
     }
 
     func stopSilence(deactivate: Bool) {
-        queue.async { [self] in
+        change { [self] in
             watchRoute(keepOnSpeaker: false)
             player?.stop()
             let session = AVAudioSession.sharedInstance()
