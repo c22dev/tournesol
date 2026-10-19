@@ -2,8 +2,12 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>Tournesol never records audio. iOS asks for this because the “Keep AirPods free” option uses a speaker-only audio route.</string>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_tournesol._tcp</string>
+	</array>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Tournesol finds and talks to your other devices on the local network.</string>
 	<key>TournesolPushSecret</key>
 	<string>$(PUSH_RELAY_SECRET)</string>
 	<key>TournesolPushURL</key>
@@ -21,11 +25,5 @@
 	</array>
 	<key>UILaunchScreen</key>
 	<dict/>
-	<key>NSBonjourServices</key>
-	<array>
-		<string>_tournesol._tcp</string>
-	</array>
-	<key>NSLocalNetworkUsageDescription</key>
-	<string>Tournesol finds and talks to your other devices on the local network.</string>
 </dict>
 </plist>
