@@ -31,6 +31,10 @@ nonisolated enum PushRelay {
 
     static var isConfigured: Bool { endpoint != nil }
 
+    private nonisolated struct RelayError: Decodable {
+        var message: String?
+    }
+
     static func send(token: String, environment: String, payload: [String: Any], priority: Int) async {
         guard let endpoint else { return }
         var request = URLRequest(url: endpoint.url)
@@ -46,7 +50,8 @@ nonisolated enum PushRelay {
             if code == 200 {
                 log.debug("push delivered")
             } else {
-                log.error("push failed \(code): \(String(decoding: response, as: UTF8.self), privacy: .public)")
+                let detail = (try? JSONDecoder().decode(RelayError.self, from: response))?.message ?? String(decoding: response, as: UTF8.self)
+                log.error("push failed \(code): \(detail, privacy: .public)")
             }
         } catch {
             log.error("push error \(error.localizedDescription, privacy: .public)")
