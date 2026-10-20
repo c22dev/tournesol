@@ -135,6 +135,11 @@ final class MusicPlayerSource: LocalPlayer {
             if let id = result.catalogID { catalogIDs[key] = id }
             if let data = result.artwork, artwork?.id != key { artwork = Artwork(id: key, data: data) }
             refresh()
+            if result.catalogID == nil, result.artwork == nil {
+                // offline or not found: try this track again later
+                try? await Task.sleep(for: .seconds(30))
+                resolvedKeys.remove(key)
+            }
         }
     }
 
@@ -233,7 +238,7 @@ final class MusicPlayerSource: LocalPlayer {
         let position = state.elapsed(at: .now)
         let wasPlaying = state.isPlaying
         Task {
-            let existing = await upcomingTracks()
+            let existing: [TrackReference] = await upcomingTracks()
             guard existing.map(\.signature) != tracks.map(\.signature) else { return }
             if !tracks.isEmpty, let removed = Self.removals(from: existing, to: tracks) {
                 skipped += removed

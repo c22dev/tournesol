@@ -71,6 +71,10 @@ final class CompositeTransport: MessageTransport {
         transports.forEach { $0.setWiFiEnabled(enabled) }
     }
 
+    func setLocalName(_ name: String) {
+        transports.forEach { $0.setLocalName(name) }
+    }
+
     func resumeAll() {
         transports.forEach { $0.resumeAll() }
     }

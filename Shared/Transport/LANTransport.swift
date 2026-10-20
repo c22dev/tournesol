@@ -26,6 +26,9 @@ final class LANTransport: MessageTransport {
     private var browser: NWBrowser?
     private var connections: [UUID: NWConnection] = [:]
     private var ready: Set<UUID> = []
+    private var closedOnPurpose: Set<UUID> = []
+    /// Peers that have sent at least one frame; an inbound connection that stays silent is dropped.
+    private var heard: Set<UUID> = []
     private var outbound: [String: UUID] = [:]
     private var remoteIDs: [UUID: String] = [:]
     private var endpoints: [String: NWEndpoint] = [:]
@@ -53,6 +56,8 @@ final class LANTransport: MessageTransport {
     func isInitiator(_ peer: UUID) -> Bool { remoteIDs[peer] != nil }
 
     func close(_ peer: UUID) {
+        // closed on purpose because another link covers it, so it isn't dialled again
+        closedOnPurpose.insert(peer)
         connections[peer]?.cancel()
     }
 
@@ -192,18 +197,25 @@ final class LANTransport: MessageTransport {
             }
         }
         connection.start(queue: .main)
+        Task { [weak self] in
+            try? await Task.sleep(for: .seconds(15))
+            guard let self, connections[peer] != nil, !heard.contains(peer) else { return }
+            drop(peer)
+        }
     }
 
     private func drop(_ peer: UUID) {
         guard let connection = connections.removeValue(forKey: peer) else { return }
         connection.cancel()
+        heard.remove(peer)
+        let wasClosedOnPurpose = closedOnPurpose.remove(peer) != nil
         let remoteID = remoteIDs.removeValue(forKey: peer)
         if let remoteID, outbound[remoteID] == peer { outbound[remoteID] = nil }
         if ready.remove(peer) != nil {
             log.info("disconnected peer \(peer.uuidString.prefix(8), privacy: .public)")
             onDisconnect?(peer)
         }
-        if let remoteID {
+        if let remoteID, !wasClosedOnPurpose {
             Task { [weak self] in
                 try? await Task.sleep(for: .seconds(3))
                 self?.connectIfNeeded(to: remoteID)
@@ -222,6 +234,7 @@ final class LANTransport: MessageTransport {
                     MainActor.assumeIsolated {
                         guard let self, self.connections[peer] === connection else { return }
                         guard error == nil, let body, body.count == length else { return self.drop(peer) }
+                        self.heard.insert(peer)
                         if let envelope = try? MessageCodec.decode(Envelope.self, from: body) {
                             self.onMessage?(envelope, peer)
                         }

@@ -40,9 +40,10 @@ final class RemoteDevice: Identifiable {
 
     @ObservationIgnored var onCommand: (Command) -> Void = { _ in }
     @ObservationIgnored var onRefresh: () -> Void = {}
-    @ObservationIgnored var onFetchQueue: () async -> [TrackReference] = { [] }
+    /// Nil when the queue couldn't be read, as opposed to being empty.
+    @ObservationIgnored var onFetchQueue: () async -> [TrackReference]? = { [] }
 
-    func upcomingTracks() async -> [TrackReference] { await onFetchQueue() }
+    func upcomingTracks() async -> [TrackReference]? { await onFetchQueue() }
 
     var hasEditableQueue: Bool { access == .full }
 
@@ -60,6 +61,13 @@ final class RemoteDevice: Identifiable {
     }
 
     func send(_ command: Command) {
+        // the host of a Jam we're a guest in only takes songs to add
+        if access == .guestHost {
+            switch command {
+            case .enqueue, .enqueueAll: break
+            default: return
+            }
+        }
         if case .setVolume(let volume) = command {
             return setVolume(volume)
         }
@@ -68,7 +76,7 @@ final class RemoteDevice: Identifiable {
     }
 
     func setVolume(_ volume: Double) {
-        guard state.volume != nil else { return }
+        guard state.volume != nil, access != .guestHost else { return }
         let volume = min(1, max(0, volume))
         volumeIntent = (volume, .now + .seconds(1.5))
         state.volume = volume

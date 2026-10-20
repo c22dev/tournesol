@@ -33,6 +33,13 @@ protocol MessageTransport: AnyObject {
     /// Higher wins when a device is reachable over more than one link. Bluetooth is preferred: it costs the least power.
     func priority(of peer: UUID) -> Int
     func medium(of peer: UUID) -> Medium
+    // Requirements, not just extension defaults: through the protocol type an extension-only method never reaches the transport's own version.
+    func setWiFiEnabled(_ enabled: Bool)
+    func isInitiator(_ peer: UUID) -> Bool
+    func close(_ peer: UUID)
+    func resumeAll()
+    func setScanning(_ scanning: Bool)
+    func setLocalName(_ name: String)
 }
 
 extension MessageTransport {
@@ -49,6 +56,7 @@ extension MessageTransport {
     func close(_ peer: UUID) {}
     func resumeAll() {}
     func setScanning(_ scanning: Bool) {}
+    func setLocalName(_ name: String) {}
 }
 
 final class Hub {
@@ -67,20 +75,27 @@ final class Hub {
         var recentlyReceived: Set<UInt64> = []
 
         mutating func accept(_ sequence: UInt64) -> Bool {
-            guard sequence + 256 > highestReceived, recentlyReceived.insert(sequence).inserted else { return false }
+            guard Self.isRecent(sequence, highest: highestReceived), recentlyReceived.insert(sequence).inserted else { return false }
             highestReceived = max(highestReceived, sequence)
             if recentlyReceived.count > 512 {
-                recentlyReceived = recentlyReceived.filter { $0 + 256 > highestReceived }
+                recentlyReceived = recentlyReceived.filter { Self.isRecent($0, highest: highestReceived) }
             }
             return true
         }
         var sentState: PlaybackState?
         var sentArtworkID: String?
+
+        /// Written without addition, which would overflow for a sequence near the top of the range.
+        private static func isRecent(_ sequence: UInt64, highest: UInt64) -> Bool {
+            highest < 256 || sequence > highest - 256
+        }
     }
 
     private struct PairingSession {
         let id = UUID()
         let deviceID: String
+        /// The key the code was compared for; the pairing trusts this and nothing a later hello says.
+        let peerKey: Data
         let link: UUID
         let isInitiator: Bool
         let localNonce = PairingMath.nonce()
@@ -123,7 +138,11 @@ final class Hub {
     /// The Jam this device hosts, announced to everyone nearby in each hello.
     private var localAdvert: JamAdvert?
     /// A Jam this device asked to join as a guest, and whether it wants to play there.
-    private var guestRequest: (id: UUID, playsHere: Bool)?
+    private var guestRequest: (id: UUID, host: String, playsHere: Bool)?
+    /// Devices this one invited to its Jam as guests; only they can accept.
+    private var invitedGuests: Set<String> = []
+    /// Catalog artwork that couldn't be fetched, so it isn't asked for again at every state update.
+    private var artworkMisses: [String: ContinuousClock.Instant] = [:]
 
     init(info: DeviceInfo, player: LocalPlayer, transport: MessageTransport, pollInterval: Duration? = nil) {
         self.player = player
@@ -131,7 +150,7 @@ final class Hub {
         local = RemoteDevice(info: info, isLocal: true)
         local.onCommand = { [player] in player.perform($0) }
         local.onRefresh = { [player] in player.refresh() }
-        local.onFetchQueue = { [player] in await player.upcomingTracks() }
+        local.onFetchQueue = { [player] in await player.upcomingTracks() as [TrackReference]? }
         store.devices = [local]
         store.autoSelect(local.id)
         store.onPair = { [weak self] in self?.pair(with: $0) }
@@ -181,6 +200,7 @@ final class Hub {
 
     func rename(_ name: String) {
         local.info.name = name
+        transport.setLocalName(name)
         for (link, state) in linkStates {
             transport.send(.hello(Hello(info: local.info, publicKey: security.publicKey, nonce: state.nonce, jam: localAdvert)), to: link)
         }
@@ -302,7 +322,7 @@ final class Hub {
         guard PushRelay.isConfigured, current.hasTrack else { return }
 
         let started = current.isPlaying && !previous.isPlaying
-        let changed = started || current.isPlaying != previous.isPlaying || current.track.signature != previous.track.signature
+        let changed = current.isPlaying != previous.isPlaying || current.track.signature != previous.track.signature
         guard changed else { return }
 
         let artworkKey = current.catalogID.map { "catalog-\($0)" } ?? current.artworkID
@@ -340,7 +360,9 @@ final class Hub {
 
         Task {
             let began = ContinuousClock.now
-            let upcoming = await upcomingTracks(of: source)
+            var fetched = await upcomingTracks(of: source)
+            if fetched == nil { fetched = await upcomingTracks(of: source) }
+            let upcoming = fetched ?? []
             target.send(.loadTrack(track, at: source.state.elapsed(at: .now), upcoming: upcoming))
 
             let loadDeadline = ContinuousClock.now + .seconds(6)
@@ -390,17 +412,18 @@ final class Hub {
         }
     }
 
-    func upcomingTracks(of device: RemoteDevice) async -> [TrackReference] {
+    /// Nil when the device didn't answer in time, so a slow link isn't mistaken for an empty queue.
+    func upcomingTracks(of device: RemoteDevice) async -> [TrackReference]? {
         if device.isLocal { return await player.upcomingTracks() }
         let link = activeLink(for: device.id)
-        guard let link else { return [] }
+        guard let link else { return nil }
         pendingQueues[device.id] = nil
         sendSecure(.requestQueue, to: link)
-        let deadline = ContinuousClock.now + .seconds(1.5)
+        let deadline = ContinuousClock.now + .seconds(2.5)
         while pendingQueues[device.id] == nil, ContinuousClock.now < deadline {
             try? await Task.sleep(for: .milliseconds(50))
         }
-        return pendingQueues.removeValue(forKey: device.id) ?? []
+        return pendingQueues.removeValue(forKey: device.id)
     }
 
     private func schedulePreparation(for device: RemoteDevice) {
@@ -536,13 +559,18 @@ final class Hub {
         }
 
         guard let catalogID = state.catalogID, let catalogKey, artworkCache[catalogKey] == nil,
+              artworkMisses[catalogKey].map({ ContinuousClock.now - $0 > .seconds(300) }) ?? true,
               artworkFetches.insert(catalogKey).inserted
         else { return }
         Task {
             let track = TrackReference(catalogID: catalogID, title: state.title, artist: state.artist, album: state.album, duration: state.duration)
             let result = await CatalogLookup.resolve(track, needsArtwork: true)
             artworkFetches.remove(catalogKey)
-            guard let data = result.artwork else { return }
+            guard let data = result.artwork else {
+                artworkMisses[catalogKey] = .now
+                return
+            }
+            artworkMisses[catalogKey] = nil
             cacheArtwork(data, for: catalogKey)
             for device in store.remotes where device.state.catalogID == catalogID {
                 refreshArtwork(for: device)
@@ -657,6 +685,7 @@ final class Hub {
 
     private func advertise(_ advert: JamAdvert?) {
         localAdvert = advert
+        if advert == nil { invitedGuests = [] }
         updateWiFi()
         for (link, state) in linkStates {
             transport.send(.hello(Hello(info: local.info, publicKey: security.publicKey, nonce: state.nonce, jam: advert)), to: link)
@@ -665,12 +694,13 @@ final class Hub {
 
     private func inviteGuest(_ device: RemoteDevice) {
         guard let advert = localAdvert, let link = links[device.id]?.first else { return }
+        invitedGuests.insert(device.id)
         transport.send(.guest(.invite(advert)), to: link)
     }
 
     private func askToJoin(_ host: RemoteDevice, playsHere: Bool) {
         guard let advert = host.jamAdvert, let link = links[host.id]?.first else { return }
-        guestRequest = (advert.id, playsHere)
+        guestRequest = (advert.id, host.id, playsHere)
         transport.send(.guest(.request(advert.id)), to: link)
     }
 
@@ -700,9 +730,10 @@ final class Hub {
                 guard let self else { return }
                 store.jamPrompt = nil
                 guard accepted else { return transport.send(.guest(.decline(advert.id)), to: link) }
+                // accept goes first: the key the other side needs comes with it, and a state sealed before it would be lost
+                transport.send(.guest(.accept(advert.id)), to: link)
                 jam.expectInvite(to: advert.id, playsHere: plays)
                 admitGuest(device, hello: hello, link: link, as: .guestHost)
-                transport.send(.guest(.accept(advert.id)), to: link)
             }
             store.jamPrompt = prompt
         case .request(let id):
@@ -712,28 +743,31 @@ final class Hub {
                 guard let self else { return }
                 store.jamPrompt = nil
                 guard accepted else { return transport.send(.guest(.decline(id)), to: link) }
-                admitGuest(device, hello: hello, link: link, as: .guestMember)
                 transport.send(.guest(.accept(id)), to: link)
+                admitGuest(device, hello: hello, link: link, as: .guestMember)
                 jam.invite(device)
             }
             store.jamPrompt = prompt
         case .accept(let id):
-            if localAdvert?.id == id {
+            if localAdvert?.id == id, invitedGuests.contains(device.id) {
                 admitGuest(device, hello: hello, link: link, as: .guestMember)
                 jam.invite(device)
-            } else if let request = guestRequest, request.id == id {
+            } else if let request = guestRequest, request.id == id, request.host == device.id {
                 guestRequest = nil
                 jam.expectInvite(to: id, playsHere: request.playsHere)
                 admitGuest(device, hello: hello, link: link, as: .guestHost)
             }
         case .decline(let id):
-            if guestRequest?.id == id { guestRequest = nil }
+            if localAdvert?.id == id { invitedGuests.remove(device.id) }
+            if guestRequest?.id == id, guestRequest?.host == device.id { guestRequest = nil }
         }
     }
 
     private func register(_ hello: Hello, link: UUID) {
         let info = hello.info
         guard info.id != local.id else { return }
+        // a link keeps the identity it first announced
+        if let owner = owners[link], owner.id != info.id { return }
         removals.removeValue(forKey: info.id)?.cancel()
         if let previous = linkStates[link]?.hello, previous.nonce != hello.nonce, let ourNonce = linkStates[link]?.nonce {
             linkStates[link]?.key = nil
@@ -750,12 +784,24 @@ final class Hub {
             withAnimation { store.devices.append(device) }
             return device
         }()
+        let isTrusted = security.isTrusted(hello)
+        let isGuest = security.isGuest(hello) && device.access != .full
+        let hasKeyedLink = (links[info.id] ?? []).contains { $0 != link && linkStates[$0]?.key != nil }
+        if !isTrusted, !isGuest, hasKeyedLink {
+            // someone claiming a device that is already connected securely can't change what we show for it
+            if owners[link] == nil {
+                owners[link] = device
+                links[info.id, default: []].append(link)
+            }
+            return
+        }
+
         device.info = info
         device.isConnected = true
         device.onCommand = { [weak self] in self?.sendSecure(.command($0), toDevice: info.id) }
         device.onRefresh = { [weak self] in self?.sendSecure(.requestState, toDevice: info.id) }
         device.onFetchQueue = { [weak self, weak device] in
-            guard let self, let device else { return [] }
+            guard let self, let device else { return nil }
             return await self.upcomingTracks(of: device)
         }
 
@@ -765,10 +811,10 @@ final class Hub {
         }
 
         device.jamAdvert = hello.jam
-        if security.isTrusted(hello) {
+        if isTrusted {
             device.access = .full
             establish(link)
-        } else if security.isGuest(hello), device.access != .full {
+        } else if isGuest {
             establish(link)
         } else {
             device.isPaired = false
@@ -822,8 +868,8 @@ final class Hub {
     }
 
     private func pair(with device: RemoteDevice) {
-        guard pairing == nil, let link = links[device.id]?.first else { return }
-        pairing = PairingSession(deviceID: device.id, link: link, isInitiator: true)
+        guard pairing == nil, let link = links[device.id]?.first, let key = linkStates[link]?.hello?.publicKey else { return }
+        pairing = PairingSession(deviceID: device.id, peerKey: key, link: link, isInitiator: true)
         showPrompt(for: device)
         transport.send(.pairing(.request), to: link)
     }
@@ -837,7 +883,7 @@ final class Hub {
                 transport.send(.pairing(.confirm(false)), to: link)
                 return
             }
-            let session = PairingSession(deviceID: device.id, link: link, isInitiator: false)
+            let session = PairingSession(deviceID: device.id, peerKey: peerKey, link: link, isInitiator: false)
             pairing = session
             showPrompt(for: device)
             onPairingRequest?()
@@ -891,6 +937,8 @@ final class Hub {
         guard let session = pairing, session.localConfirmed, session.remoteConfirmed,
               let hello = linkStates[session.link]?.hello
         else { return }
+        // the device whose code was compared, not whatever the link says now
+        guard hello.publicKey == session.peerKey, hello.info.id == session.deviceID else { return endPairing(.cancelled) }
         security.trust(hello)
         endPairing(.paired)
         for link in links[hello.info.id] ?? [] where linkStates[link]?.hello?.publicKey == hello.publicKey {

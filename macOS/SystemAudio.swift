@@ -123,6 +123,7 @@ enum OutputLatency {
 
         var total = frames(kAudioDevicePropertyLatency, of: device, scope: kAudioDevicePropertyScopeOutput)
             + frames(kAudioDevicePropertySafetyOffset, of: device, scope: kAudioDevicePropertyScopeOutput)
+            + frames(kAudioDevicePropertyBufferFrameSize, of: device, scope: kAudioObjectPropertyScopeGlobal)
         var streamsAddress = AudioObjectPropertyAddress(mSelector: kAudioDevicePropertyStreams, mScope: kAudioDevicePropertyScopeOutput, mElement: kAudioObjectPropertyElementMain)
         var streamsSize = UInt32(0)
         if AudioObjectGetPropertyDataSize(device, &streamsAddress, 0, nil, &streamsSize) == noErr, streamsSize > 0 {

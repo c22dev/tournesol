@@ -86,6 +86,7 @@ final class CiderSource: LocalPlayer {
     /// Counts changes sent to Cider, so a poll that began before one can't undo it.
     private var commandEpoch = 0
     private var lastPolled = ContinuousClock.now
+    private var failedPolls = 0
 
     /// The system's now-playing stream says when something changes, so polling is only a fallback: slower still while Music is the one in use.
     var isPassive = false {
@@ -233,10 +234,14 @@ final class CiderSource: LocalPlayer {
         // a change was sent meanwhile; its own poll follows
         guard epoch == commandEpoch else { return }
         guard let playing = (playingJSON as? [String: Any])?["is_playing"] as? Bool else {
+            // one dropped request isn't "nothing is playing"
+            failedPolls += 1
+            guard failedPolls >= 3 else { return }
             current = nil
             publish()
             return
         }
+        failedPolls = 0
         current = (infoJSON as? [String: Any])?["info"].flatMap { $0 as? [String: Any] }.flatMap(Self.parse)
         var reported = playing
         if let intent = playingIntent {
@@ -285,7 +290,8 @@ final class CiderSource: LocalPlayer {
             next.artist = current.artist
             next.album = current.album
             next.duration = current.duration
-            next.elapsed = min(current.duration, current.elapsed + (playingNow ? Date.now.timeIntervalSince(current.polledAt) : 0))
+            let position = current.elapsed + (playingNow ? Date.now.timeIntervalSince(current.polledAt) : 0)
+            next.elapsed = current.duration > 0 ? min(current.duration, position) : position
             next.timestamp = .now
             next.isPlaying = playingNow
             next.shuffle = current.shuffle
@@ -494,7 +500,7 @@ final class CiderSource: LocalPlayer {
     private func currentVolume() async -> Double {
         let volume = ((await request("/volume") as? [String: Any])?["volume"] as? Double) ?? 1
         // a volume left at zero by an interrupted fade must not be restored
-        return volume > 0.05 ? volume : 1
+        return volume > 0.005 ? volume : 1
     }
 
     private func fade(to end: Double) async {

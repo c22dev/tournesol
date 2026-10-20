@@ -207,7 +207,7 @@ final class JamCoordinator {
     func receive(_ message: JamMessage, from deviceID: String) {
         switch message {
         case .invite(let state):
-            guard session == nil else { return }
+            guard session == nil, state.leaderID == deviceID else { return }
             if let plays = expected.removeValue(forKey: state.id) {
                 accept(state, playsHere: plays)
             } else if UserDefaults.standard.bool(forKey: Self.autoJoinKey), store.device(id: deviceID)?.access == .full {
@@ -250,6 +250,7 @@ final class JamCoordinator {
         case .ping(let id, let sentAt):
             _ = links.send(.pong(id, sentAt: sentAt, remote: .now), deviceID)
         case .pong(_, let sentAt, let remote):
+            guard session?.leaderID == deviceID else { return }
             clock.add(sent: sentAt, remote: remote, received: .now)
         case .report(let id, let drift):
             guard let session, session.isLeader, session.id == id else { return }

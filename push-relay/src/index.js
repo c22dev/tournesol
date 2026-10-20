@@ -42,7 +42,8 @@ export default {
   async fetch(request, env) {
     const path = new URL(request.url).pathname
     if (request.method !== 'POST' || path !== '/send') return json(404, { error: 'not_found', message: 'Unknown route.' })
-    if (request.headers.get('authorization') !== `Bearer ${env.RELAY_SECRET}`) {
+    // an unset secret must not match the header "Bearer undefined"
+    if (!env.RELAY_SECRET || request.headers.get('authorization') !== `Bearer ${env.RELAY_SECRET}`) {
       return json(401, { error: 'unauthorized', message: 'The relay secret does not match PUSH_RELAY_SECRET.' })
     }
     let body
@@ -51,7 +52,7 @@ export default {
     } catch {
       return json(400, { error: 'bad_json', message: 'The request body is not valid JSON.' })
     }
-    const { token, environment, topic, pushType, priority, payload } = body
+    const { token, environment, topic, priority, payload } = body
     if (!/^[0-9a-f]{32,200}$/i.test(token ?? '')) return json(400, { error: 'bad_token', message: 'The push token is not a hex string.' })
     if (!topic?.startsWith(env.APNS_TOPIC_PREFIX)) {
       return json(400, { error: 'bad_topic', message: `The topic must start with ${env.APNS_TOPIC_PREFIX}.` })
@@ -69,8 +70,9 @@ export default {
         headers: {
           authorization: `bearer ${await jwt(env)}`,
           'apns-topic': topic,
-          'apns-push-type': pushType ?? 'liveactivity',
-          'apns-priority': String(priority ?? 10),
+          // the relay only carries Live Activity pushes, whatever the caller asks for
+          'apns-push-type': 'liveactivity',
+          'apns-priority': priority === 5 ? '5' : '10',
           'content-type': 'application/json',
         },
         body: JSON.stringify(payload),

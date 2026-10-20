@@ -54,7 +54,7 @@ nonisolated struct LaneAssembler {
     private var lanes: [UInt8: FrameAssembler] = [:]
 
     mutating func append(_ chunk: Data) -> Data? {
-        guard let lane = chunk.first else { return nil }
+        guard let lane = chunk.first, lane <= Lane.bulk.rawValue else { return nil }
         return lanes[lane, default: FrameAssembler()].append(Data(chunk.dropFirst()))
     }
 }

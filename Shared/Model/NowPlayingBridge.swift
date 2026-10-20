@@ -107,7 +107,7 @@ final class NowPlayingBridge {
         let center = MPNowPlayingInfoCenter.default()
         if let image = device.artwork {
             info[MPMediaItemPropertyArtwork] = Self.artwork(for: image)
-        } else if let existing = center.nowPlayingInfo?[MPMediaItemPropertyArtwork], publishedArtworkKey == device.artworkKey {
+        } else if let existing = center.nowPlayingInfo?[MPMediaItemPropertyArtwork], let published = publishedArtworkKey, published == device.artworkKey {
             info[MPMediaItemPropertyArtwork] = existing
         }
         publishedArtworkKey = device.artworkKey

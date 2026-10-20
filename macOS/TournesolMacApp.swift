@@ -55,8 +55,8 @@ private struct PlaybackMenu: View {
     var body: some View {
         let device = store.selected
         let hasTrack = device?.state.hasTrack == true
+        // Space is handled by the key monitor in AppDelegate: a menu item can't take a bare key
         Button(device?.state.isPlaying == true ? "Pause" : "Play") { device?.send(.togglePlayPause) }
-            .keyboardShortcut(.space, modifiers: [])
             .disabled(!hasTrack)
         Button("Next") { device?.send(.next) }
             .keyboardShortcut(.rightArrow, modifiers: .command)
@@ -110,7 +110,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var spaceMonitor: Any?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        LoginItem.registerOnFirstLaunch()
         // a menu item can't take a bare Space, so catch it here unless a text field has focus
         spaceMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
             guard event.keyCode == 49, event.modifierFlags.intersection(.deviceIndependentFlagsMask).isEmpty,
@@ -163,13 +162,6 @@ enum LoginItem {
 
     static func setEnabled(_ enabled: Bool) {
         try? enabled ? SMAppService.mainApp.register() : SMAppService.mainApp.unregister()
-    }
-
-    static func registerOnFirstLaunch() {
-        let key = "registeredLoginItem"
-        guard !UserDefaults.standard.bool(forKey: key) else { return }
-        UserDefaults.standard.set(true, forKey: key)
-        setEnabled(true)
     }
 }
 

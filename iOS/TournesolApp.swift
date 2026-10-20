@@ -84,6 +84,7 @@ final class AppModel {
 enum RemoteIntentRouter {
     static func perform(_ action: RemoteAction, on requestedID: String) async {
         var snapshot = ControlSnapshot.load()
+        let originalSnapshot = snapshot
         guard let deviceID = requestedID == ControlSnapshot.currentDevice ? snapshot.deviceID : requestedID else { return }
         if requestedID == ControlSnapshot.currentDevice, action == .togglePlayPause {
             snapshot.isPlaying.toggle()
@@ -97,6 +98,7 @@ enum RemoteIntentRouter {
         }
         guard let device = store.device(id: deviceID), device.isConnected, device.isPaired else {
             if let original { await LiveActivityController.restore(original, deviceID: deviceID) }
+            if snapshot != originalSnapshot { ControlCenterSync.publish(originalSnapshot) }
             return
         }
         switch action {

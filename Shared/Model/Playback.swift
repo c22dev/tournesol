@@ -150,7 +150,9 @@ nonisolated struct PlaybackState: Codable, Equatable, Sendable {
 
     func elapsed(at date: Date) -> TimeInterval {
         guard isPlaying else { return elapsed }
-        return min(duration, max(0, elapsed + date.timeIntervalSince(timestamp)))
+        let position = max(0, elapsed + date.timeIntervalSince(timestamp))
+        // a duration of 0 means it isn't known, not that the song is over
+        return duration > 0 ? min(duration, position) : position
     }
 
     func differs(from other: PlaybackState) -> Bool {

@@ -201,7 +201,8 @@ final class MusicAppSource: LocalPlayer {
             next.duration = info.duration ?? 0
             let rate = info.rate ?? 0
             let reportedAt = info.timestamp.map(Date.init(timeIntervalSince1970:)) ?? .now
-            next.elapsed = min(next.duration, (info.elapsed ?? 0) + (rate > 0 ? Date.now.timeIntervalSince(reportedAt) * rate : 0))
+            let position = (info.elapsed ?? 0) + (rate > 0 ? Date.now.timeIntervalSince(reportedAt) * rate : 0)
+            next.elapsed = next.duration > 0 ? min(next.duration, position) : position
             next.timestamp = .now
             next.isPlaying = rate > 0
 
@@ -269,14 +270,21 @@ final class MusicAppSource: LocalPlayer {
                 try? await Task.sleep(for: .milliseconds(250))
                 if let data = streamArtwork[key] { artwork = Artwork(id: key, data: data) }
             }
-            guard trackKey == key else { return }
+            // a track skipped past before it was resolved is looked at again if it comes back
+            guard trackKey == key else {
+                resolvedKeys.remove(key)
+                return
+            }
             if artwork?.id == key {
                 publish()
                 if track.catalogID != nil { return }
             }
             for attempt in 0..<6 where artwork?.id != key {
                 if attempt > 0 { try? await Task.sleep(for: .milliseconds(500)) }
-                guard trackKey == key else { return }
+                guard trackKey == key else {
+                    resolvedKeys.remove(key)
+                    return
+                }
                 guard let raw = await currentArtworkData() else { break }
                 if let last = lastRawArtwork, last.data == raw, last.album != track.album { continue }
                 if let thumbnail = ArtworkEncoding.thumbnail(from: raw) {
@@ -293,6 +301,11 @@ final class MusicAppSource: LocalPlayer {
             if let id = result.catalogID { catalogIDs[key] = id }
             if let data = result.artwork, artwork?.id != key { artwork = Artwork(id: key, data: data) }
             publish()
+            if result.catalogID == nil, result.artwork == nil {
+                // offline or not found: try this track again later
+                try? await Task.sleep(for: .seconds(30))
+                resolvedKeys.remove(key)
+            }
         }
     }
 
@@ -588,7 +601,7 @@ final class MusicAppSource: LocalPlayer {
     }
 
     private func emulateEnqueue(_ tracks: [TrackReference], next: Bool) {
-        let isIdle = !state.isPlaying && loaded == nil && loading == nil
+        let isIdle = !state.isPlaying && !state.hasTrack && loaded == nil && loading == nil
         if queue.isEmpty, !stopAfterCurrent { queue = systemQueue }
         stopAfterCurrent = false
         if next { queue.insert(contentsOf: tracks, at: 0) } else { queue.append(contentsOf: tracks) }
@@ -721,7 +734,11 @@ final class MusicAppSource: LocalPlayer {
                 script.send("play (track id \(id) of library playlist 1)")
                 await confirmStart(title: title, seeked: false, volume: volume, target: target)
             case .catalog(let id):
-                guard !id.isEmpty, id.allSatisfy(\.isNumber) else { return }
+                guard !id.isEmpty, id.allSatisfy(\.isNumber) else {
+                    log.error("startLoaded: \(id, privacy: .public) is not a catalog id")
+                    script.send("set sound volume to \(volume)")
+                    return
+                }
                 let storefront = Locale.current.region?.identifier.lowercased() ?? "us"
                 script.send("open location \"music://music.apple.com/\(storefront)/song/\(id)\"")
                 script.send("pause")

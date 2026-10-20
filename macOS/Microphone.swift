@@ -22,9 +22,13 @@ nonisolated final class Microphone: @unchecked Sendable {
         }
     }
 
+    struct NoInput: Error {}
+
     func start() throws {
         let input = engine.inputNode
         let format = input.outputFormat(forBus: 0)
+        // a Mac without a microphone reports a 0 Hz format, which installTap answers by raising an exception
+        guard format.sampleRate > 0, format.channelCount > 0 else { throw NoInput() }
         rate = format.sampleRate
         input.installTap(onBus: 0, bufferSize: 4096, format: format) { [weak self] buffer, time in
             self?.append(buffer, at: time)

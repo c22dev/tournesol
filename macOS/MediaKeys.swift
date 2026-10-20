@@ -128,7 +128,7 @@ final class MediaKeyController {
         else { return false }
 
         if key.isVolume && !store.devices.contains(where: { $0.state.isPlaying }) { return false }
-        guard let device = store.selected, !device.isLocal, device.isConnected else { return false }
+        guard let device = store.selected, !device.isLocal, device.isConnected, device.access == .full else { return false }
         guard isDown else { return true }
 
         let symbol: String

@@ -256,6 +256,11 @@ struct JamView: View {
                             Button(device.isPaired ? "Add" : "Invite as Guest") {
                                 invited.insert(device.id)
                                 store.onInviteToJam(device)
+                                // an ignored or declined invitation can be sent again
+                                Task {
+                                    try? await Task.sleep(for: .seconds(20))
+                                    invited.remove(device.id)
+                                }
                             }
                             .buttonStyle(.bordered)
                         }

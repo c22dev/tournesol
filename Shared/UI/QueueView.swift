@@ -253,7 +253,8 @@ struct QueueView: View {
     }
 
     private func reload() async {
-        let fetched = await device.upcomingTracks()
+        // no answer is not an empty queue: keep what's shown
+        guard let fetched = await device.upcomingTracks() else { return }
         guard Date.now.timeIntervalSince(lastEdit) > 3 else { return }
         hasLoaded = true
         guard fetched != tracks.map(\.track) else { return }
