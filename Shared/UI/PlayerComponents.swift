@@ -651,7 +651,7 @@ struct PlaybackOptions: View {
     var body: some View {
         let state = device.state
         HStack {
-            if let shuffle = state.shuffle {
+            if let shuffle = state.shuffle, device.access == .full {
                 OptionButton(symbol: "shuffle", isOn: shuffle, accent: device.accent.accent.color, label: "Shuffle") {
                     device.send(.setShuffle(!shuffle))
                 }
@@ -659,7 +659,9 @@ struct PlaybackOptions: View {
                 .opacity(state.hasTrack ? 1 : 0.35)
             }
             Spacer()
-            if let mode = state.repeatMode {
+            JamButton()
+            Spacer()
+            if let mode = state.repeatMode, device.access == .full {
                 OptionButton(symbol: mode == .one ? "repeat.1" : "repeat", isOn: mode != .off, accent: device.accent.accent.color, label: "Repeat") {
                     device.send(.setRepeat(mode.next))
                 }

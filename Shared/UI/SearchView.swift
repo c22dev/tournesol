@@ -70,13 +70,53 @@ private extension Playlist {
     var browseItem: BrowseItem { BrowseItem(id: "playlist-\(id.rawValue)", title: name, subtitle: curatorName, artwork: artwork, destination: .playlist(self)) }
 }
 
+private enum TopHit: Identifiable {
+    case song(Song)
+    case album(Album)
+    case artist(Artist)
+    case playlist(Playlist)
+
+    var id: String {
+        switch self {
+        case .song(let song): "song-\(song.id.rawValue)"
+        case .album(let album): "album-\(album.id.rawValue)"
+        case .artist(let artist): "artist-\(artist.id.rawValue)"
+        case .playlist(let playlist): "playlist-\(playlist.id.rawValue)"
+        }
+    }
+}
+
+/// What was searched for lately, kept on this device.
+private enum RecentSearches {
+    private static let key = "recentSearches"
+
+    static func load() -> [String] {
+        UserDefaults.standard.stringArray(forKey: key) ?? []
+    }
+
+    static func add(_ term: String) -> [String] {
+        let term = term.trimmingCharacters(in: .whitespaces)
+        guard !term.isEmpty else { return load() }
+        var terms = load().filter { $0.caseInsensitiveCompare(term) != .orderedSame }
+        terms.insert(term, at: 0)
+        terms = Array(terms.prefix(10))
+        UserDefaults.standard.set(terms, forKey: key)
+        return terms
+    }
+
+    static func clear() {
+        UserDefaults.standard.removeObject(forKey: key)
+    }
+}
+
 private struct SearchResults {
+    var top: [TopHit] = []
     var songs: [Song] = []
     var albums: [Album] = []
     var artists: [Artist] = []
     var playlists: [Playlist] = []
 
-    var isEmpty: Bool { songs.isEmpty && albums.isEmpty && artists.isEmpty && playlists.isEmpty }
+    var isEmpty: Bool { top.isEmpty && songs.isEmpty && albums.isEmpty && artists.isEmpty && playlists.isEmpty }
 }
 
 private func describe(_ error: Error) -> String {
@@ -106,6 +146,11 @@ private struct Player {
 
     /// Plays `songs[index]` and queues what follows it.
     func play(_ songs: [Song], from index: Int = 0, shuffled: Bool = false) {
+        // A guest can't start songs on the host, only add them to its queue.
+        if device.access == .guestHost {
+            if songs.indices.contains(index) { queue([songs[index]], next: false) }
+            return dismiss()
+        }
         var songs = songs
         if shuffled { songs.shuffle() }
         guard songs.indices.contains(index) else { return }
@@ -187,6 +232,8 @@ struct SearchView: View {
     @State private var path: [SearchDestination] = []
     @State private var isAuthorized = MusicAuthorization.currentStatus == .authorized
     @State private var browse: [BrowseSection] = []
+    @State private var suggestions: [String] = []
+    @State private var recents = RecentSearches.load()
 
     private var player: Player { Player(device: device) { dismiss() } }
 
@@ -234,12 +281,31 @@ struct SearchView: View {
                 }
             }
             .searchable(text: $query, prompt: "Songs, albums, artists")
+            .searchSuggestions {
+                if query.isEmpty {
+                    ForEach(recents, id: \.self) { term in
+                        Label(term, systemImage: "clock.arrow.circlepath").searchCompletion(term)
+                    }
+                    if !recents.isEmpty {
+                        Button("Clear Recent Searches", role: .destructive) {
+                            RecentSearches.clear()
+                            recents = []
+                        }
+                    }
+                } else {
+                    ForEach(suggestions, id: \.self) { term in
+                        Text(term).searchCompletion(term)
+                    }
+                }
+            }
+            .onSubmit(of: .search) { recents = RecentSearches.add(query) }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Close", systemImage: "xmark") { dismiss() }
                 }
             }
             .task(id: query) { await search() }
+            .task(id: query) { await loadSuggestions() }
             .task {
                 await requestAccess()
                 await loadBrowse()
@@ -265,13 +331,37 @@ struct SearchView: View {
 
     @ViewBuilder
     private var resultSections: some View {
+        if !results.top.isEmpty {
+            Section("Top Results") {
+                ForEach(results.top) { hit in
+                    switch hit {
+                    case .song(let song):
+                        SongRow(song: song, player: player) { play([song], from: 0) }
+                            #if os(iOS)
+                            .swipeActions(edge: .leading) { songActions(song) }
+                            #endif
+                    case .album(let album):
+                        NavigationLink(value: SearchDestination.album(album)) {
+                            ItemRow(title: album.title, subtitle: "Album · \(album.artistName)", artwork: album.artwork, round: false)
+                        }
+                    case .artist(let artist):
+                        NavigationLink(value: SearchDestination.artist(artist)) {
+                            ItemRow(title: artist.name, subtitle: "Artist", artwork: artist.artwork, round: true)
+                        }
+                    case .playlist(let playlist):
+                        NavigationLink(value: SearchDestination.playlist(playlist)) {
+                            ItemRow(title: playlist.name, subtitle: "Playlist · \(playlist.curatorName ?? "Apple Music")", artwork: playlist.artwork, round: false)
+                        }
+                    }
+                }
+            }
+        }
         if !results.songs.isEmpty {
             Section("Songs") {
                 ForEach(Array(results.songs.enumerated()), id: \.element.id) { index, song in
-                    SongRow(song: song) {
-                        player.play(results.songs, from: index)
+                    SongRow(song: song, player: player) {
+                        play(results.songs, from: index)
                     }
-                    .contextMenu { songActions(song) }
                     #if os(iOS)
                     .swipeActions(edge: .leading) { songActions(song) }
                     #endif
@@ -307,16 +397,29 @@ struct SearchView: View {
         }
     }
 
-    @ViewBuilder
     private func songActions(_ song: Song) -> some View {
-        Button("Play", systemImage: "play.fill") { player.play([song]) }
-        Button("Play Next", systemImage: "text.line.first.and.arrowtriangle.forward") { player.queue([song], next: true) }
-            .tint(.orange)
-        Button("Add to Queue", systemImage: "text.line.last.and.arrowtriangle.forward") { player.queue([song], next: false) }
-            .tint(.indigo)
+        SongMenuItems(song: song, player: player)
     }
 
     // MARK: Loading
+
+    private func play(_ songs: [Song], from index: Int) {
+        recents = RecentSearches.add(query)
+        player.play(songs, from: index)
+    }
+
+    private func loadSuggestions() async {
+        let term = query.trimmingCharacters(in: .whitespaces)
+        guard isAuthorized, !term.isEmpty else {
+            suggestions = []
+            return
+        }
+        try? await Task.sleep(for: .milliseconds(150))
+        guard !Task.isCancelled else { return }
+        let request = MusicCatalogSearchSuggestionsRequest(term: term, includingTopResultsOfTypes: [])
+        guard let response = try? await request.response(), !Task.isCancelled else { return }
+        suggestions = response.suggestions.prefix(6).map { $0.searchTerm }
+    }
 
     private func requestAccess() async {
         if MusicAuthorization.currentStatus == .notDetermined {
@@ -344,10 +447,20 @@ struct SearchView: View {
         defer { isSearching = false }
         var request = MusicCatalogSearchRequest(term: term, types: [Song.self, Album.self, Artist.self, Playlist.self])
         request.limit = 15
+        request.includeTopResults = true
         do {
             let response = try await request.response()
             guard !Task.isCancelled else { return }
-            results = SearchResults(songs: Array(response.songs), albums: Array(response.albums), artists: Array(response.artists), playlists: Array(response.playlists))
+            let top: [TopHit] = response.topResults.prefix(5).compactMap { result in
+                switch result {
+                case .song(let song): .song(song)
+                case .album(let album): .album(album)
+                case .artist(let artist): .artist(artist)
+                case .playlist(let playlist): .playlist(playlist)
+                default: nil
+                }
+            }
+            results = SearchResults(top: top, songs: Array(response.songs), albums: Array(response.albums), artists: Array(response.artists), playlists: Array(response.playlists))
             errorMessage = nil
         } catch {
             guard !Task.isCancelled else { return }
@@ -441,7 +554,7 @@ private struct CollectionView: View {
             } else {
                 Section {
                     ForEach(Array(songs.enumerated()), id: \.offset) { index, song in
-                        SongRow(song: song, showsArtwork: false, number: index + 1) { player.play(songs, from: index) }
+                        SongRow(song: song, player: player, showsArtwork: false, number: index + 1) { player.play(songs, from: index) }
                     }
                 }
             }
@@ -492,7 +605,7 @@ private struct ArtistView: View {
                     PlayButtons(songs: topSongs, player: player)
                         .listRowBackground(Color.clear)
                     ForEach(Array(topSongs.enumerated()), id: \.element.id) { index, song in
-                        SongRow(song: song) { player.play(topSongs, from: index) }
+                        SongRow(song: song, player: player) { player.play(topSongs, from: index) }
                     }
                 } header: {
                     Text("Top Songs")
@@ -592,13 +705,48 @@ private struct ItemRow: View {
     }
 }
 
+/// What can be done with a song besides playing the list it is in.
+private struct SongMenuItems: View {
+    let song: Song
+    let player: Player
+
+    var body: some View {
+        Button("Play", systemImage: "play.fill") { player.play([song]) }
+        Button("Play Next", systemImage: "text.line.first.and.arrowtriangle.forward") { player.queue([song], next: true) }
+            .tint(.orange)
+        Button("Add to Queue", systemImage: "text.line.last.and.arrowtriangle.forward") { player.queue([song], next: false) }
+            .tint(.indigo)
+    }
+}
+
 private struct SongRow: View {
     let song: Song
+    let player: Player
     var showsArtwork = true
     var number: Int?
     let onPlay: () -> Void
 
     var body: some View {
+        HStack(spacing: 4) {
+            playButton
+            Menu {
+                SongMenuItems(song: song, player: player)
+            } label: {
+                Image(systemName: "ellipsis")
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 36, height: 36)
+                    .contentShape(.rect)
+            }
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .fixedSize()
+            .accessibilityLabel("More")
+        }
+        .contextMenu { SongMenuItems(song: song, player: player) }
+    }
+
+    private var playButton: some View {
         Button(action: onPlay) {
             HStack(spacing: 12) {
                 if let number {

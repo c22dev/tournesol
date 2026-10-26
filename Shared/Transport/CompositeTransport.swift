@@ -62,6 +62,19 @@ final class CompositeTransport: MessageTransport {
         return transports[key.transport].priority(of: key.peer)
     }
 
+    func medium(of link: UUID) -> Medium {
+        guard let key = keys[link] else { return .bluetooth }
+        return transports[key.transport].medium(of: key.peer)
+    }
+
+    func setWiFiEnabled(_ enabled: Bool) {
+        transports.forEach { $0.setWiFiEnabled(enabled) }
+    }
+
+    func setLocalName(_ name: String) {
+        transports.forEach { $0.setLocalName(name) }
+    }
+
     func resumeAll() {
         transports.forEach { $0.resumeAll() }
     }

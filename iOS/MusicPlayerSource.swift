@@ -135,6 +135,11 @@ final class MusicPlayerSource: LocalPlayer {
             if let id = result.catalogID { catalogIDs[key] = id }
             if let data = result.artwork, artwork?.id != key { artwork = Artwork(id: key, data: data) }
             refresh()
+            if result.catalogID == nil, result.artwork == nil {
+                // offline or not found: try this track again later
+                try? await Task.sleep(for: .seconds(30))
+                resolvedKeys.remove(key)
+            }
         }
     }
 
@@ -233,7 +238,7 @@ final class MusicPlayerSource: LocalPlayer {
         let position = state.elapsed(at: .now)
         let wasPlaying = state.isPlaying
         Task {
-            let existing = await upcomingTracks()
+            let existing: [TrackReference] = await upcomingTracks()
             guard existing.map(\.signature) != tracks.map(\.signature) else { return }
             if !tracks.isEmpty, let removed = Self.removals(from: existing, to: tracks) {
                 skipped += removed
@@ -259,8 +264,23 @@ final class MusicPlayerSource: LocalPlayer {
         }
     }
 
+    private var loadGeneration = 0
+
+    /// Looks the queue up while the song prepares, then adds it behind the song, unless another load has begun since.
+    private func restOfQueue(_ tracks: [TrackReference], generation: Int) {
+        guard !tracks.isEmpty else { return }
+        Task {
+            let ids = await catalogIDs(for: tracks)
+            guard generation == loadGeneration, !ids.isEmpty else { return }
+            player.append(MPMusicPlayerStoreQueueDescriptor(storeIDs: ids))
+            log.debug("queued \(ids.count) more behind the loaded song")
+            refresh()
+        }
+    }
+
     private func load(_ track: TrackReference, at position: TimeInterval, upcoming: [TrackReference]) {
         skipped = []
+        loadGeneration += 1
         loadedSignature = nil
         loading?.cancel()
         loading = Task {
@@ -276,8 +296,9 @@ final class MusicPlayerSource: LocalPlayer {
                 let rest = upcoming.compactMap { libraryItem(matching: $0, threshold: TrackMatcher.acceptable, requireAlbum: false) }
                 player.setQueue(with: MPMediaItemCollection(items: [item] + rest))
             case .catalog(let id):
-                let rest = await catalogIDs(for: upcoming)
-                player.setQueue(with: MPMusicPlayerStoreQueueDescriptor(storeIDs: [id] + rest))
+                // the song starts without waiting for the rest of the queue to be looked up
+                player.setQueue(with: MPMusicPlayerStoreQueueDescriptor(storeIDs: [id]))
+                restOfQueue(upcoming, generation: loadGeneration)
             }
             try? await player.prepareToPlay()
             player.currentPlaybackTime = position

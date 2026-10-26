@@ -18,6 +18,8 @@ nonisolated struct TrustedPeer: Codable, Hashable, Sendable {
 @Observable
 final class SecurityContext {
     private(set) var trusted: [String: TrustedPeer]
+    /// Let into a Jam without pairing. Kept in memory only and dropped when the Jam ends.
+    private(set) var guests: [String: TrustedPeer] = [:]
     @ObservationIgnored let privateKey: Curve25519.KeyAgreement.PrivateKey
 
     var publicKey: Data { privateKey.publicKey.rawRepresentation }
@@ -39,6 +41,18 @@ final class SecurityContext {
     func trust(_ hello: Hello) {
         trusted[hello.info.id] = TrustedPeer(publicKey: hello.publicKey, name: hello.info.name, kind: hello.info.kind)
         save()
+    }
+
+    func isGuest(_ hello: Hello) -> Bool {
+        guests[hello.info.id]?.publicKey == hello.publicKey
+    }
+
+    func admitGuest(_ hello: Hello) {
+        guests[hello.info.id] = TrustedPeer(publicKey: hello.publicKey, name: hello.info.name, kind: hello.info.kind)
+    }
+
+    func dismissGuest(_ id: String) {
+        guests[id] = nil
     }
 
     func forget(_ id: String) {

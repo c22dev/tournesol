@@ -21,6 +21,11 @@ struct RemoteView: View {
                     DeviceSwitcher(onShowAll: onShowDevices)
                         .padding(.horizontal, -8)
                 }
+                if store.jam != nil || !store.nearbyJams.isEmpty {
+                    JamBar()
+                        .padding(.top, 8)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                }
                 Spacer(minLength: isShort ? 12 : 20)
                 artwork
                     .frame(width: artworkSide, height: artworkSide)
@@ -28,16 +33,22 @@ struct RemoteView: View {
                 VStack(spacing: isShort ? 12 : 20) {
                     HStack(alignment: .center, spacing: 14) {
                         TrackInfoView(state: device.state)
-                        LikeButton(device: device)
+                        if !isGuest { LikeButton(device: device) }
                         SearchButton(device: device)
                         QueueButton(device: device)
-                        TransferButton(device: device)
+                        if !isGuest { TransferButton(device: device) }
                     }
-                    ScrubberView(state: device.state) { device.send(.seek($0)) }
-                    TransportControls(device: device, scale: isShort ? 0.85 : 1)
-                        .padding(.vertical, isShort ? 0 : 4)
+                    Group {
+                        ScrubberView(state: device.state) { device.send(.seek($0)) }
+                        TransportControls(device: device, scale: isShort ? 0.85 : 1)
+                            .padding(.vertical, isShort ? 0 : 4)
+                    }
+                    .disabled(isGuest)
+                    .opacity(isGuest ? 0.4 : 1)
                     PlaybackOptions(device: device)
                     VolumeSlider(device: device)
+                        .disabled(isGuest)
+                        .opacity(isGuest ? 0.4 : 1)
                     OutputRouteLabel(device: device)
                         .padding(.top, isShort ? 0 : 2)
                 }
@@ -60,11 +71,22 @@ struct RemoteView: View {
             }
             .padding(.top, 64)
         }
+        .overlay(alignment: .bottom) {
+            if let prompt = store.jamPrompt {
+                JamPromptCard(prompt: prompt)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+        .animation(.smooth, value: store.jamPrompt?.id)
+        .animation(.smooth, value: store.jam?.id)
         .animation(.smooth, value: device.isConnected)
         .animation(.smooth, value: store.transfer?.phase)
         .animation(.smooth, value: store.transfer == nil)
         .refreshingRemote(device)
     }
+
+    /// A guest in someone's Jam sees what plays and adds songs, but doesn't control the host.
+    private var isGuest: Bool { device.access == .guestHost }
 
     private var artwork: some View {
         let isPlaying = device.state.isPlaying || !device.state.hasTrack

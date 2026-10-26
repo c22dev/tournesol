@@ -12,7 +12,7 @@ final class BLEPeripheral: NSObject, MessageTransport {
     var onDisconnect: ((UUID) -> Void)?
     var onMessage: ((Envelope, UUID) -> Void)?
 
-    private let localName: String
+    private var localName: String
     private var manager: CBPeripheralManager!
     private var outbound: CBMutableCharacteristic?
     private var centrals: [UUID: CBCentral] = [:]
@@ -31,6 +31,17 @@ final class BLEPeripheral: NSObject, MessageTransport {
         let options: [String: Any] = [:]
         #endif
         manager = CBPeripheralManager(delegate: self, queue: nil, options: options)
+    }
+
+    func setLocalName(_ name: String) {
+        guard name != localName else { return }
+        localName = name
+        guard manager.state == .poweredOn, manager.isAdvertising else { return }
+        manager.stopAdvertising()
+        manager.startAdvertising([
+            CBAdvertisementDataServiceUUIDsKey: [BLE.service],
+            CBAdvertisementDataLocalNameKey: localName,
+        ])
     }
 
     private func markActive(_ id: UUID) {

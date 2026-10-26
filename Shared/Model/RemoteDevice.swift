@@ -18,6 +18,18 @@ final class RemoteDevice: Identifiable {
     var tint: RGB?
     var isConnected = true
     var isPaired: Bool
+    /// What this device may do here. Guests only take part in a Jam.
+    var access = Access.full
+    /// The Jam this device is hosting, if it is.
+    var jamAdvert: JamAdvert?
+
+    enum Access {
+        case full
+        /// It hosts a Jam we joined as a guest: we can see what plays and add songs.
+        case guestHost
+        /// It joined our Jam as a guest: it can add songs.
+        case guestMember
+    }
     @ObservationIgnored var stateRevision = 0
     @ObservationIgnored private(set) var reportedState = PlaybackState.idle
     @ObservationIgnored private var playbackExpectation: (title: String?, expires: ContinuousClock.Instant)?
@@ -28,12 +40,12 @@ final class RemoteDevice: Identifiable {
 
     @ObservationIgnored var onCommand: (Command) -> Void = { _ in }
     @ObservationIgnored var onRefresh: () -> Void = {}
-    @ObservationIgnored var onFetchQueue: () async -> [TrackReference] = { [] }
+    /// Nil when the queue couldn't be read, as opposed to being empty.
+    @ObservationIgnored var onFetchQueue: () async -> [TrackReference]? = { [] }
 
-    func upcomingTracks() async -> [TrackReference] { await onFetchQueue() }
+    func upcomingTracks() async -> [TrackReference]? { await onFetchQueue() }
 
-    /// What plays after the current track. Macs and iPhones both keep an editable queue.
-    var hasEditableQueue: Bool { true }
+    var hasEditableQueue: Bool { access == .full }
 
     init(info: DeviceInfo, isLocal: Bool) {
         id = info.id
@@ -42,13 +54,20 @@ final class RemoteDevice: Identifiable {
         isPaired = isLocal
     }
 
-    var isControllable: Bool { isLocal || isPaired }
+    var isControllable: Bool { isLocal || (isPaired && access != .guestMember) }
 
     var displayName: String {
         isLocal ? "This \(info.kind.displayName)" : info.name
     }
 
     func send(_ command: Command) {
+        // the host of a Jam we're a guest in only takes songs to add
+        if access == .guestHost {
+            switch command {
+            case .enqueue, .enqueueAll: break
+            default: return
+            }
+        }
         if case .setVolume(let volume) = command {
             return setVolume(volume)
         }
@@ -57,7 +76,7 @@ final class RemoteDevice: Identifiable {
     }
 
     func setVolume(_ volume: Double) {
-        guard state.volume != nil else { return }
+        guard state.volume != nil, access != .guestHost else { return }
         let volume = min(1, max(0, volume))
         volumeIntent = (volume, .now + .seconds(1.5))
         state.volume = volume
@@ -200,6 +219,32 @@ final class PairingPrompt: Identifiable {
         self.deviceSymbol = deviceSymbol
     }
 }
+
+@Observable
+final class JamPrompt: Identifiable {
+    enum Kind {
+        /// Someone invites this device into their Jam.
+        case invite
+        /// Someone asks to join this device's Jam.
+        case request
+    }
+
+    let id = UUID()
+    let kind: Kind
+    let deviceName: String
+    let deviceSymbol: String
+    let isGuest: Bool
+
+    @ObservationIgnored var respond: (_ accept: Bool, _ playsHere: Bool) -> Void = { _, _ in }
+
+    init(kind: Kind, deviceName: String, deviceSymbol: String, isGuest: Bool) {
+        self.kind = kind
+        self.deviceName = deviceName
+        self.deviceSymbol = deviceSymbol
+        self.isGuest = isGuest
+    }
+}
+
 @Observable
 final class TransferStatus {
     enum Phase {
@@ -233,10 +278,21 @@ final class DeviceStore {
     }
     var pairingPrompt: PairingPrompt?
     var transfer: TransferStatus?
+    var jam: JamSession?
+    /// An invitation to join a Jam, or someone asking to join ours.
+    var jamPrompt: JamPrompt?
 
     @ObservationIgnored var onPair: (RemoteDevice) -> Void = { _ in }
     @ObservationIgnored var onTransfer: (RemoteDevice, RemoteDevice) -> Void = { _, _ in }
     @ObservationIgnored var onForget: (String) -> Void = { _ in }
+    @ObservationIgnored var onStartJam: () -> Void = {}
+    @ObservationIgnored var onLeaveJam: () -> Void = {}
+    @ObservationIgnored var onInviteToJam: (RemoteDevice) -> Void = { _ in }
+    @ObservationIgnored var onJoinJam: (RemoteDevice, Bool) -> Void = { _, _ in }
+    @ObservationIgnored var onSetJamPlays: (String, Bool) -> Void = { _, _ in }
+    @ObservationIgnored var onPlayOnAll: (Bool) -> Void = { _ in }
+    /// Nil where there's no microphone to tune with.
+    @ObservationIgnored var onTuneJam: (() async -> String)?
 
     var selected: RemoteDevice? {
         controllable.first { $0.id == selectedID } ?? devices.first(where: \.isLocal)
@@ -247,7 +303,12 @@ final class DeviceStore {
     }
 
     var remotes: [RemoteDevice] {
-        devices.filter { !$0.isLocal && $0.isPaired }
+        devices.filter { !$0.isLocal && $0.isPaired && $0.access == .full }
+    }
+
+    /// Devices nearby hosting a Jam this one isn't in.
+    var nearbyJams: [RemoteDevice] {
+        devices.filter { !$0.isLocal && $0.isConnected && $0.jamAdvert != nil && $0.jamAdvert?.id != jam?.id }
     }
 
     var unpaired: [RemoteDevice] {
@@ -255,7 +316,7 @@ final class DeviceStore {
     }
 
     func transferTargets(from source: RemoteDevice) -> [RemoteDevice] {
-        controllable.filter { $0.id != source.id && $0.isConnected }
+        controllable.filter { $0.id != source.id && $0.isConnected && $0.access == .full }
     }
 
     func device(id: String) -> RemoteDevice? {

@@ -2,8 +2,8 @@
 //  LANTransport.swift
 //  Tournesol
 //
-//  Faster and longer-ranged than Bluetooth: devices find each other with Bonjour and talk over TCP,
-//  on the same network or straight over peer-to-peer Wi-Fi.
+//  Faster and longer-ranged than Bluetooth, but it costs much more power: devices find each other with Bonjour and
+//  talk over TCP, on the same network or straight over peer-to-peer Wi-Fi. It only runs while the Hub asks for it.
 //
 
 import Foundation
@@ -26,14 +26,17 @@ final class LANTransport: MessageTransport {
     private var browser: NWBrowser?
     private var connections: [UUID: NWConnection] = [:]
     private var ready: Set<UUID> = []
+    private var closedOnPurpose: Set<UUID> = []
+    /// Peers that have sent at least one frame; an inbound connection that stays silent is dropped.
+    private var heard: Set<UUID> = []
     private var outbound: [String: UUID] = [:]
     private var remoteIDs: [UUID: String] = [:]
     private var endpoints: [String: NWEndpoint] = [:]
     private var observers: [NSObjectProtocol] = []
+    private var enabled = false
 
     init(localID: String, activationNotifications: [Notification.Name] = []) {
         self.localID = localID
-        start()
         observers = activationNotifications.map { name in
             NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
                 MainActor.assumeIsolated { self?.start() }
@@ -41,15 +44,33 @@ final class LANTransport: MessageTransport {
         }
     }
 
-    func priority(of peer: UUID) -> Int { 1 }
+    func priority(of peer: UUID) -> Int { 0 }
+    func medium(of peer: UUID) -> Medium { .wifi }
+
+    func setWiFiEnabled(_ enabled: Bool) {
+        guard self.enabled != enabled else { return }
+        self.enabled = enabled
+        if enabled { start() } else { stop() }
+    }
 
     func isInitiator(_ peer: UUID) -> Bool { remoteIDs[peer] != nil }
 
     func close(_ peer: UUID) {
+        // closed on purpose because another link covers it, so it isn't dialled again
+        closedOnPurpose.insert(peer)
         connections[peer]?.cancel()
     }
 
     func resumeAll() { start() }
+
+    private func stop() {
+        listener?.cancel()
+        listener = nil
+        browser?.cancel()
+        browser = nil
+        endpoints.removeAll()
+        for peer in Array(connections.keys) { drop(peer) }
+    }
 
     func send(_ message: Envelope, to peer: UUID, lane: Lane) {
         guard ready.contains(peer), let connection = connections[peer], let payload = try? MessageCodec.encode(message) else { return }
@@ -77,6 +98,7 @@ final class LANTransport: MessageTransport {
 
     /// Starts whatever isn't running, so it also recovers after the app was suspended.
     private func start() {
+        guard enabled else { return }
         if listener == nil { startListener() }
         if browser == nil { startBrowser() }
     }
@@ -149,7 +171,7 @@ final class LANTransport: MessageTransport {
 
     /// Of two devices, the one with the larger id connects, so a pair never ends up with two connections.
     private func connectIfNeeded(to name: String) {
-        guard localID > name, outbound[name] == nil, connections.count < Self.maxPeers, let endpoint = endpoints[name] else { return }
+        guard enabled, localID > name, outbound[name] == nil, connections.count < Self.maxPeers, let endpoint = endpoints[name] else { return }
         adopt(NWConnection(to: endpoint, using: Self.parameters()), remoteID: name)
     }
 
@@ -175,18 +197,25 @@ final class LANTransport: MessageTransport {
             }
         }
         connection.start(queue: .main)
+        Task { [weak self] in
+            try? await Task.sleep(for: .seconds(15))
+            guard let self, connections[peer] != nil, !heard.contains(peer) else { return }
+            drop(peer)
+        }
     }
 
     private func drop(_ peer: UUID) {
         guard let connection = connections.removeValue(forKey: peer) else { return }
         connection.cancel()
+        heard.remove(peer)
+        let wasClosedOnPurpose = closedOnPurpose.remove(peer) != nil
         let remoteID = remoteIDs.removeValue(forKey: peer)
         if let remoteID, outbound[remoteID] == peer { outbound[remoteID] = nil }
         if ready.remove(peer) != nil {
             log.info("disconnected peer \(peer.uuidString.prefix(8), privacy: .public)")
             onDisconnect?(peer)
         }
-        if let remoteID {
+        if let remoteID, !wasClosedOnPurpose {
             Task { [weak self] in
                 try? await Task.sleep(for: .seconds(3))
                 self?.connectIfNeeded(to: remoteID)
@@ -205,6 +234,7 @@ final class LANTransport: MessageTransport {
                     MainActor.assumeIsolated {
                         guard let self, self.connections[peer] === connection else { return }
                         guard error == nil, let body, body.count == length else { return self.drop(peer) }
+                        self.heard.insert(peer)
                         if let envelope = try? MessageCodec.decode(Envelope.self, from: body) {
                             self.onMessage?(envelope, peer)
                         }

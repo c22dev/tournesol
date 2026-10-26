@@ -2,3 +2,6 @@
 xcuserdata/
 *.xcuserstate
 .DS_Store
+Config/Secrets.xcconfig
+push-relay/.wrangler/
+*.swp

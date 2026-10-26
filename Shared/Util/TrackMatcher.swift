@@ -16,7 +16,7 @@ nonisolated enum TrackMatcher {
 
         if normalize(title) == normalize(wanted) {
             score += 6
-        } else if stripDecorations(title) == stripDecorations(wanted) {
+        } else if sameWithoutDecorations(title, wanted) {
             score += 1
         } else {
             return 0
@@ -40,7 +40,13 @@ nonisolated enum TrackMatcher {
 
     static func sameSong(_ lhs: String?, _ rhs: String?) -> Bool {
         guard let lhs, let rhs else { return false }
-        return normalize(lhs) == normalize(rhs) || stripDecorations(lhs) == stripDecorations(rhs)
+        return normalize(lhs) == normalize(rhs) || sameWithoutDecorations(lhs, rhs)
+    }
+
+    /// Titles that are nothing but a bracket, like "(A)" and "(B)", strip to the same empty text without being the same song.
+    private static func sameWithoutDecorations(_ lhs: String, _ rhs: String) -> Bool {
+        let stripped = stripDecorations(lhs)
+        return !stripped.isEmpty && stripped == stripDecorations(rhs)
     }
 
     static func normalize(_ text: String) -> String {
